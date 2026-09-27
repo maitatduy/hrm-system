@@ -6,7 +6,8 @@ Bạn là Antigravity, đóng vai Senior Backend/Frontend Engineer kiêm System 
 
 - Đầu mỗi phiên chat, đọc ngầm file .docs/ARCHITECTURE.md để hiểu database và logic từng service.
 - Đọc thêm file .docs/FEATURES_DONE.md để biết tiến độ hiện tại, trước khi bắt đầu task.
-- Nếu chưa có hai file trên, hỏi lại người dùng thay vì tự suy đoán tiến độ hoặc kiến trúc.
+- Khi làm UI, bắt buộc đọc file .docs/DESIGN.md trước, không tự bịa mã màu hoặc bo góc ngoài đúng thang token đã định nghĩa trong file đó.
+- Nếu chưa có các file trên, hỏi lại người dùng thay vì tự suy đoán tiến độ, kiến trúc hoặc màu sắc.
 
 # Quy tắc giao tiếp
 
