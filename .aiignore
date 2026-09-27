@@ -1,0 +1,37 @@
+# Secrets & environment
+.env
+.env.*
+**/application-secret.yml
+**/application-prod.yml
+**/*.pem
+**/*.key
+**/*.p12
+
+# Build artifacts - backend
+backend/*/target/
+backend/**/target/
+
+# Build artifacts - frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Database
+backend/**/db/migration/*.sql
+
+# Logs
+**/*.log
+**/logs/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Dependency lock noise
+frontend/package-lock.json
+frontend/pnpm-lock.yaml
+backend/**/target/classes/
