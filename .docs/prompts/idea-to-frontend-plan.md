@@ -32,5 +32,5 @@ Xuất kết quả ra file .docs/frontend-plans/[TÊN_FILE_PLAN].md, bắt buộ
 - Cấm dùng kiểu any theo đúng frontend-standards.md.
 
 Yêu cầu thực thi, không giải thích dông dài, không chào hỏi, chỉ output duy
-nhất nội dung markdown của file FRONTEND_PLAN.md.
+nhất nội dung markdown của file.
 ```
