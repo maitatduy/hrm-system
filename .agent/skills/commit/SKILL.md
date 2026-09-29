@@ -40,8 +40,6 @@ Chọn type theo đúng quy ước đã dùng xuyên suốt project, dựa vào 
 ## Bước 5: soạn commit message
 
 - Dòng tiêu đề theo dạng type, hai chấm, mô tả ngắn gọn bằng tiếng Anh.
-- Nếu thay đổi có nhiều điểm đáng chú ý, thêm phần thân commit dạng gạch đầu dòng, mỗi dòng nêu một thay đổi cụ thể.
-- Nếu đây là một thay đổi sửa lại quyết định trước đó, hoặc sửa một lỗi thiếu sót quan trọng, ghi rõ trong thân commit lý do tại sao cần sửa, không chỉ ghi đã sửa gì.
 
 ## Bước 6: commit
 
