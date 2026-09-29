@@ -15,22 +15,29 @@ Bắt buộc thực hiện theo quy trình sau:
   danh sách component cần vẽ, số liệu spacing, và dữ liệu mẫu tiếng Việt đã
   chuẩn bị sẵn.
 
-2. Thực thi vẽ
-- Dựa vào hai file trên, tiến hành render bản vẽ giao diện đồ họa.
+2. Kết nối Stitch
+- Gọi tới Stitch qua MCP Server đã cấu hình sẵn trong project, không tự vẽ
+  bằng công cụ khác hoặc tự sinh HTML/CSS thay thế.
+- Gửi kèm toàn bộ thông số đã đọc được ở bước 1, bảng màu, thang bo góc,
+  thang typography, cấu trúc layout, danh sách component và dữ liệu mẫu,
+  làm input cho Stitch.
+
+3. Thực thi vẽ
+- Dựa vào hai file trên, yêu cầu Stitch render bản vẽ giao diện đồ họa qua MCP Server.
 - Lắp ráp chính xác dữ liệu mẫu tiếng Việt trong file brief vào bản vẽ, không
   thay bằng dữ liệu tiếng Anh hoặc dữ liệu không liên quan tới nghiệp vụ HRM.
 - Nếu brief có ghi rõ phạm vi breakpoint cần vẽ, desktop, tablet hoặc mobile,
   vẽ đúng đủ các phiên bản được yêu cầu, không tự ý bỏ bớt hoặc thêm phiên
   bản không có trong brief.
 
-3. Ràng buộc kỷ luật
-- Chỉ làm việc trên nền tảng vẽ UI, tuyệt đối không tạo, chỉnh sửa hoặc can
-  thiệp vào bất kỳ file code vật lý nào trong thư mục dự án.
+4. Ràng buộc kỷ luật
+- Chỉ làm việc trên nền tảng vẽ UI của Stitch qua MCP Server, tuyệt đối không
+  tạo, chỉnh sửa hoặc can thiệp vào bất kỳ file code vật lý nào trong thư mục
+  dự án.
 - Bắt buộc dùng đúng mã màu hex đã quy định trong DESIGN.md, ví dụ #0075de
   cho hành động chính, cấm tự chế mã hex mới không có trong file đó.
 - Bắt buộc dùng đúng thang bo góc đã quy định, rounded-xs cho input, rounded-
   full cho nút hành động chính và badge dạng pill, không trộn lẫn tuỳ ý.
 
-Sau khi hoàn thiện bản vẽ, báo cáo đúng một câu, "Đã vẽ xong giao diện, sẵn
-sàng cho Antigravity thi công code."
+Sau khi hoàn thiện bản vẽ, báo cáo đúng một câu, "Đã vẽ xong giao diện qua Stitch, sẵn sàng cho Antigravity thi công code."
 ```
