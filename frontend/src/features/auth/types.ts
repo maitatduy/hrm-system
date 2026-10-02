@@ -95,3 +95,47 @@ export interface AuthState {
     readonly setAuth: (payload: { accessToken: string; user: AuthUserSession }) => void;
     readonly clearAuth: () => void;
 }
+
+export interface LogoutRequest {
+    readonly refreshToken?: string;
+}
+
+export interface LogoutResponse {
+    readonly success: boolean;
+    readonly message: string;
+}
+
+export interface ConfirmDialogProps {
+    readonly isOpen: boolean;
+    readonly title: string;
+    readonly description: string;
+    readonly confirmLabel?: string;
+    readonly cancelLabel?: string;
+    readonly isLoading?: boolean;
+    readonly variant?: "danger" | "primary";
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly children?: ReactNode;
+}
+
+export interface DangerButtonProps {
+    readonly children: ReactNode;
+    readonly onClick?: () => void;
+    readonly isLoading?: boolean;
+    readonly disabled?: boolean;
+    readonly className?: string;
+    readonly type?: "button" | "submit" | "reset";
+}
+
+export interface SecondaryButtonProps {
+    readonly children: ReactNode;
+    readonly onClick: () => void;
+    readonly disabled?: boolean;
+    readonly className?: string;
+    readonly type?: "button" | "submit" | "reset";
+}
+
+export interface DangerAlertIconBadgeProps {
+    readonly className?: string;
+}
+
