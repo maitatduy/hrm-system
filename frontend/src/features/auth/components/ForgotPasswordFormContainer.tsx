@@ -45,7 +45,7 @@ export const ForgotPasswordFormContainer = () => {
 
                     setTimeout(() => {
                         navigate(
-                            `/reset-password?email=${encodeURIComponent(formData.email.trim())}`,
+                            `/verify-otp?email=${encodeURIComponent(formData.email.trim())}`,
                         );
                     }, 2000);
                 },

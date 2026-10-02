@@ -180,3 +180,83 @@ export interface BackToLoginLinkProps {
     readonly className?: string;
 }
 
+export interface VerifyOtpRequest {
+    readonly email: string;
+    readonly otp: string;
+}
+
+export interface VerifyOtpResponse {
+    readonly success: boolean;
+    readonly message: string;
+    readonly resetToken?: string;
+}
+
+export interface ResendOtpRequest {
+    readonly email: string;
+}
+
+export interface ResendOtpResponse {
+    readonly success: boolean;
+    readonly message: string;
+}
+
+export interface OtpFeedbackState {
+    readonly type: "success" | "error" | "info";
+    readonly message: string;
+}
+
+export interface MaskedEmailNoticeProps {
+    readonly email: string;
+    readonly className?: string;
+}
+
+export interface OtpSlotInputProps {
+    readonly index: number;
+    readonly value: string;
+    readonly disabled?: boolean;
+    readonly isError?: boolean;
+    readonly isFocused?: boolean;
+    readonly onChange: (index: number, char: string) => void;
+    readonly onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
+    readonly onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
+    readonly onFocus: (index: number) => void;
+    readonly inputRef?: (el: HTMLInputElement | null) => void;
+}
+
+export interface OtpInputGroupProps {
+    readonly value: string[];
+    readonly disabled?: boolean;
+    readonly isError?: boolean;
+    readonly activeIndex: number;
+    readonly onChange: (index: number, char: string) => void;
+    readonly onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
+    readonly onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
+    readonly onFocus: (index: number) => void;
+    readonly registerInputRef: (index: number, el: HTMLInputElement | null) => void;
+    readonly className?: string;
+}
+
+export interface OtpResendSectionProps {
+    readonly cooldown: number;
+    readonly isResending: boolean;
+    readonly onResend: () => void;
+    readonly className?: string;
+}
+
+export interface OtpVerificationFormProps {
+    readonly otpDigits: string[];
+    readonly activeSlotIndex: number;
+    readonly feedback: OtpFeedbackState | null;
+    readonly isSubmitting: boolean;
+    readonly isResending: boolean;
+    readonly cooldown: number;
+    readonly onOtpChange: (index: number, char: string) => void;
+    readonly onOtpKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
+    readonly onOtpPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
+    readonly onOtpFocus: (index: number) => void;
+    readonly registerInputRef: (index: number, el: HTMLInputElement | null) => void;
+    readonly onSubmit: () => void;
+    readonly onResend: () => void;
+    readonly onClearFeedback?: () => void;
+}
+

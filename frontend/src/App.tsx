@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { LoginPage } from "./features/auth/pages/LoginPage";
 import { ForgotPasswordPage } from "./features/auth/pages/ForgotPasswordPage";
+import { OtpVerificationPage } from "./features/auth/pages/OtpVerificationPage";
 import { UserProfileContainer } from "./features/auth/components/UserProfileContainer";
 
 const DashboardShell = ({ title }: { readonly title: string }) => {
@@ -67,6 +68,7 @@ export const App = () => {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/verify-otp" element={<OtpVerificationPage />} />
                     <Route
                         path="/dashboard"
                         element={<DashboardShell title="Admin/HR Dashboard" />}
