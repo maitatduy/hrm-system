@@ -10,3 +10,11 @@ export const loginFormSchema = z.object({
 });
 
 export type LoginFormValues = z.infer<typeof loginFormSchema>;
+
+export const forgotPasswordFormSchema = z.object({
+    email: z
+        .string()
+        .trim()
+        .min(1, "Vui lòng nhập địa chỉ email")
+        .email("Định dạng email công việc không hợp lệ (ví dụ: ten@congty.vn)"),
+});

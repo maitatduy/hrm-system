@@ -1,6 +1,6 @@
 import { AuthTitle } from "./AuthTitle";
 
-interface AuthHeaderProps {
+export interface AuthHeaderProps {
     readonly title?: string;
     readonly className?: string;
 }

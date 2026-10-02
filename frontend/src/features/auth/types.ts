@@ -139,3 +139,44 @@ export interface DangerAlertIconBadgeProps {
     readonly className?: string;
 }
 
+export interface ForgotPasswordFormData {
+    email: string;
+}
+
+export interface ForgotPasswordRequest {
+    readonly email: string;
+}
+
+export interface ForgotPasswordResponse {
+    readonly success: boolean;
+    readonly message: string;
+}
+
+export interface FormFeedbackState {
+    readonly type: "success" | "error" | "info";
+    readonly message: string;
+}
+
+export interface FormFeedbackBannerProps {
+    readonly type: "success" | "error" | "info";
+    readonly message: string | null;
+    readonly onClose?: () => void;
+    readonly className?: string;
+}
+
+export interface ForgotPasswordFormProps {
+    readonly register: UseFormRegister<ForgotPasswordFormData>;
+    readonly errors: FieldErrors<ForgotPasswordFormData>;
+    readonly feedback: FormFeedbackState | null;
+    readonly isSubmitting: boolean;
+    readonly onSubmit: () => void;
+    readonly onClearFeedback?: () => void;
+}
+
+export interface BackToLoginLinkProps {
+    readonly to?: string;
+    readonly label?: string;
+    readonly disabled?: boolean;
+    readonly className?: string;
+}
+

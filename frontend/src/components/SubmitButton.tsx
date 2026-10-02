@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 export interface SubmitButtonProps {
     readonly children: ReactNode;
     readonly isLoading: boolean;
+    readonly loadingText?: string;
     readonly disabled?: boolean;
     readonly className?: string;
     readonly onClick?: () => void;
@@ -12,6 +13,7 @@ export interface SubmitButtonProps {
 export const SubmitButton = ({
     children,
     isLoading,
+    loadingText,
     disabled = false,
     className = "",
     onClick,
@@ -35,7 +37,7 @@ export const SubmitButton = ({
                         className="w-[18px] h-[18px] animate-spin text-white"
                         aria-hidden="true"
                     />
-                    <span>Đang đăng nhập...</span>
+                    <span>{loadingText || "Đang đăng nhập..."}</span>
                 </>
             ) : (
                 children
