@@ -10,6 +10,10 @@ import type {
     VerifyOtpResponse,
     ResendOtpRequest,
     ResendOtpResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
 } from "./types";
 
 export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
@@ -36,6 +40,20 @@ export const verifyOtpApi = async (data: VerifyOtpRequest): Promise<VerifyOtpRes
 
 export const resendOtpApi = async (data: ResendOtpRequest): Promise<ResendOtpResponse> => {
     const response = await apiClient.post<ResendOtpResponse>("/v1/auth/resend-otp", data);
+    return response.data;
+};
+
+export const resetPasswordApi = async (
+    data: ResetPasswordRequest,
+): Promise<ResetPasswordResponse> => {
+    const response = await apiClient.post<ResetPasswordResponse>("/v1/auth/reset-password", data);
+    return response.data;
+};
+
+export const changePasswordApi = async (
+    data: ChangePasswordRequest,
+): Promise<ChangePasswordResponse> => {
+    const response = await apiClient.post<ChangePasswordResponse>("/v1/auth/change-password", data);
     return response.data;
 };
 

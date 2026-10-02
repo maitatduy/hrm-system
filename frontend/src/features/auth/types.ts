@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { UseFormRegister, FieldErrors } from "react-hook-form";
+import type { UseFormRegister, UseFormRegisterReturn, FieldErrors } from "react-hook-form";
 
 export type UserRole = "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE";
 
@@ -258,5 +258,93 @@ export interface OtpVerificationFormProps {
     readonly onSubmit: () => void;
     readonly onResend: () => void;
     readonly onClearFeedback?: () => void;
+}
+
+export interface ResetPasswordRequest {
+    readonly email: string;
+    readonly resetToken: string;
+    readonly newPassword: string;
+    readonly confirmPassword: string;
+}
+
+export interface ResetPasswordResponse {
+    readonly success: boolean;
+    readonly message: string;
+}
+
+export interface ChangePasswordRequest {
+    readonly currentPassword: string;
+    readonly newPassword: string;
+    readonly confirmPassword: string;
+}
+
+export interface ChangePasswordResponse {
+    readonly success: boolean;
+    readonly message: string;
+}
+
+export interface PasswordFormFeedback {
+    readonly type: "success" | "error" | "info";
+    readonly message: string;
+}
+
+export type PasswordRuleId =
+    | "min-length"
+    | "has-uppercase"
+    | "has-lowercase"
+    | "has-number"
+    | "has-special";
+
+export interface PasswordRequirement {
+    readonly id: PasswordRuleId;
+    readonly label: string;
+    readonly isMet: boolean;
+}
+
+export interface PasswordRequirementItemProps {
+    readonly requirement: PasswordRequirement;
+    readonly className?: string;
+}
+
+export interface PasswordStrengthIndicatorProps {
+    readonly requirements: readonly PasswordRequirement[];
+    readonly className?: string;
+}
+
+export type PasswordFormMode = "reset" | "change";
+
+export interface PasswordChangeFormProps {
+    readonly mode: PasswordFormMode;
+    readonly registerCurrentPassword?: UseFormRegisterReturn;
+    readonly registerNewPassword: UseFormRegisterReturn;
+    readonly registerConfirmPassword: UseFormRegisterReturn;
+    readonly currentPasswordError?: string;
+    readonly newPasswordError?: string;
+    readonly confirmPasswordError?: string;
+    readonly isSubmitDisabled: boolean;
+    readonly isSubmitting: boolean;
+    readonly feedback: PasswordFormFeedback | null;
+    readonly onSubmit: (e?: React.BaseSyntheticEvent) => Promise<void> | void;
+    readonly onCancel?: () => void;
+    readonly submitButtonText?: string;
+    readonly className?: string;
+}
+
+export interface ResetPasswordContainerProps {
+    readonly email: string;
+    readonly resetToken: string;
+    readonly onSuccessRedirect?: (loginUrl: string) => void;
+}
+
+export interface ChangePasswordContainerProps {
+    readonly onSuccess?: () => void;
+    readonly onCancel?: () => void;
+}
+
+export interface SettingsCardProps {
+    readonly title: string;
+    readonly description?: string;
+    readonly children: ReactNode;
+    readonly className?: string;
 }
 
