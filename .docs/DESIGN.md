@@ -1,48 +1,72 @@
 # Luật thiết kế: HRM System
 
-Tài liệu này dựa trên bộ design token đã phân tích từ Notion, gồm màu sắc, typography, bo góc và spacing, áp dụng lại cho các màn hình nghiệp vụ HRM.
+Tài liệu này dùng thẳng bảng màu Tailwind chuẩn, không dùng mã hex riêng như bản nháp trước đó.
 
 ## Bảng màu và phân cấp
 
-- Primary action, mã màu #0075de, trạng thái nhấn dùng #005bab. Dùng duy nhất cho nút hành động chính như lưu nhân viên, duyệt đơn nghỉ phép, chốt kỳ lương. Không dùng màu này cho phần trang trí hay icon phụ.
-- Secondary action, nền trắng #ffffff, chữ đen #000000, viền hairline #e6e6e6. Dùng cho nút phụ như xem chi tiết, hủy, quay lại.
-- Nền trang dùng canvas-soft #f6f5f4, card và input dùng surface trắng #ffffff để nổi bật trên nền.
-- Chữ chính dùng ink #000000, chữ phụ dùng ink-secondary #31302e, chữ mờ dùng ink-muted #615d59 hoặc ink-faint #a39e98 cho ghi chú ít quan trọng.
-- Trạng thái thành công, ví dụ đơn đã duyệt hoặc nhân viên đang làm việc, dùng accent-green #1aae39.
-- Trạng thái đang chờ, ví dụ đơn chờ duyệt hoặc lương đang xử lý, dùng accent-orange #dd5b00.
-- Bộ token gốc không có màu đỏ semantic cho hành động nguy hiểm hoặc từ chối, đề xuất bổ sung accent-danger #dc2626 riêng cho HRM, dùng cho nút từ chối đơn, xóa nhân viên, hoặc badge đã nghỉ việc.
+- Nền trang dùng bg-gray-50.
+- Card và panel dùng nền trắng bg-white, viền border border-gray-200, bo góc rounded-xl, không có shadow mặc định, chỉ hiện hover:shadow-lg khi hover với các card có thể bấm vào.
+- Nút hành động chính dùng bg-blue-600, chữ trắng, hover:bg-blue-700.
+- Nút phụ dùng viền border border-gray-200, nền trắng, chữ text-gray-700, hover:bg-gray-50.
+- Nút hành động nguy hiểm, xóa hoặc từ chối, dùng bg-red-600, hover:bg-red-700, chữ trắng. Icon hành động nguy hiểm dạng nhỏ dùng text-red-600 trên nền bg-red-100, hover:bg-red-200.
+- Nút xác nhận thanh toán hoặc hoàn tất dùng bg-green-600, hover:bg-green-700.
+- Tính năng AI, ví dụ chấm điểm hồ sơ ứng viên, dùng gradient bg-gradient-to-r from-purple-600 to-blue-600, chỉ dùng riêng cho tính năng AI để tạo điểm nhấn khác biệt, không dùng gradient này cho hành động thường.
+- Chữ tiêu đề chính dùng text-gray-900, chữ mô tả phụ dùng text-gray-600, chữ nhãn hoặc chú thích nhỏ dùng text-gray-500, chữ placeholder hoặc giá trị trống dùng text-gray-400.
 
-## Typography và khoảng cách
+## Badge trạng thái
 
-- Tiêu đề trang dùng heading-1, cỡ 40px, đậm 700.
-- Tiêu đề khối hoặc card dùng heading-3, cỡ 22px, đậm 700.
-- Nội dung chính dùng body-md, cỡ 16px, đậm 400, không đặt nội dung dài ở weight đậm.
-- Label bảng, badge nhỏ, ghi chú dùng caption hoặc eyebrow, cỡ 12 tới 14px.
-- Bo góc dùng đúng thang token, rounded-xs 4px cho input, rounded-md 8px cho nút phụ và card nhỏ, rounded-lg 12px cho card lớn, rounded-full cho nút chính và badge dạng pill.
-- Khoảng cách trong card giữ ở mức spacing-lg 24px, khoảng cách giữa các trường trong form giữ ở mức spacing-sm tới spacing-md.
+Badge luôn dùng dạng pill, class chung inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium, phối màu nền nhạt và chữ đậm cùng tông.
 
-## Thành phần đặc thù HRM
+- Trạng thái tích cực, đang làm việc, đúng giờ, đã duyệt, đã thanh toán, đã hoàn thành, dùng bg-green-100 text-green-800.
+- Trạng thái đang chờ hoặc cảnh báo nhẹ, nghỉ phép, đi muộn, chờ duyệt, sắp diễn ra, dùng bg-yellow-100 text-yellow-800.
+- Trạng thái tiêu cực, nghỉ việc, vắng mặt, từ chối, dùng bg-red-100 text-red-800.
+- Trạng thái thông tin trung tính, nghỉ phép trong bảng chấm công, đang diễn ra, dùng bg-blue-100 text-blue-800.
+- Trạng thái trung tính đã kết thúc, đã đóng, đã hoàn thành chương trình đào tạo, dùng bg-gray-100 text-gray-800.
+- Các bước ứng viên trong tuyển dụng dùng thêm bg-purple-100 text-purple-800 và bg-indigo-100 text-indigo-800 để phân biệt nhiều vòng phỏng vấn liên tiếp.
 
-- Employee card, ảnh đại diện hình vuông bo tròn đầy đủ, tên dùng typography title, phòng ban và chức vụ dùng body-sm với màu ink-muted. Badge trạng thái đặt ở góc trên bên phải card.
-- Badge trạng thái nhân viên, đang làm việc dùng accent-green, đang nghỉ phép dùng accent-orange, đã nghỉ việc dùng ink-faint làm nền xám, không dùng accent-danger cho trạng thái này vì đây không phải hành động cần cảnh báo.
-- Badge trạng thái đơn nghỉ phép, chờ duyệt dùng accent-orange, đã duyệt dùng accent-green, từ chối dùng accent-danger.
-- Bảng lương, số tiền thực nhận dùng ink đậm và cỡ chữ lớn hơn dòng còn lại, các khoản khấu trừ dùng ink-muted kèm dấu trừ phía trước, không dùng gạch ngang giữa chữ như giá cũ trong e-commerce vì đây là số liệu tài chính cần đọc rõ ràng.
-- Bảng dữ liệu, header dùng typography eyebrow viết hoa nhẹ, phần thân dùng body-sm, mỗi dòng có hairline phân cách, không dùng viền đậm.
-- Layout danh sách nhân viên, desktop dùng dạng bảng có phân trang, tablet trở xuống chuyển sang dạng card xếp chồng một cột, không dùng lưới nhiều cột như grid sản phẩm vì dữ liệu nhân sự cần đọc theo hàng ngang nhiều hơn.
+## Avatar
 
-## Ràng buộc trải nghiệm người dùng
+- Avatar dùng hình tròn, nền gradient bg-gradient-to-br from-blue-500 to-purple-600, chữ trắng đậm là ký tự cuối của tên.
+- Avatar lớn ở trang chi tiết dùng bo góc vuông rounded-xl thay vì tròn, kích thước lớn hơn, cùng tông gradient.
 
-- Duyệt đơn nghỉ phép, khi bấm vào một dòng trong danh sách đơn, mở drawer trượt từ phải sang để xem chi tiết và duyệt, không chuyển sang trang mới để giữ mạch làm việc của HR hoặc Manager.
-- Phản hồi hành động, khi duyệt hoặc từ chối đơn, khi lưu thông tin nhân viên, khi chốt kỳ lương thành công, hiển thị toast góc trên bên phải báo kết quả.
-- Hành động nguy hiểm, xóa nhân viên hoặc hủy một kỳ lương đã chốt, bắt buộc hiển thị modal xác nhận trước khi thực hiện, nút xác nhận dùng màu accent-danger thay vì primary.
-- Form nhập liệu, input giữ góc vuông nhẹ rounded-xs, không dùng bo tròn pill như nút, trường bắt buộc hiển thị lỗi ngay dưới input khi validate thất bại.
-- Điều hướng chính, sidebar bên trái dùng surface trắng, mục đang chọn dùng primary color làm thanh chỉ báo bên trái, không dùng nền đổi màu toàn bộ hàng.
+## Typography
 
-## Nên và không nên
+- Tiêu đề trang dùng text-3xl font-bold text-gray-900, kèm một dòng mô tả phụ text-gray-600 ngay dưới.
+- Tiêu đề khối hoặc card dùng font-bold text-gray-900, cỡ text-xl cho khối lớn, mặc định cho khối nhỏ.
+- Giá trị số liệu thống kê nổi bật dùng text-3xl font-bold, màu đổi theo ngữ cảnh, xanh dương mặc định, xanh lá cho số liệu tích cực, vàng cho số liệu cảnh báo.
 
-- Chỉ dùng primary color cho hành động chính và trạng thái đang chọn, không dùng cho trang trí.
-- Giữ nền trang canvas-soft, card và input dùng surface trắng để tạo phân lớp rõ ràng.
-- Dùng shadow nhiều lớp mờ nhẹ thay vì đổ bóng nặng, ưu tiên hairline cho card mặc định.
-- Không đặt nội dung dài ở weight chữ đậm, giữ weight 400 cho phần đọc chính, weight 700 chỉ dùng cho tiêu đề.
-- Không dùng accent-danger cho trạng thái trung tính như đã nghỉ việc, chỉ dùng cho hành động cần cảnh báo thật sự.
-- Không trộn nhiều bo góc khác nhau trong cùng một nhóm thành phần cùng cấp, ví dụ các nút trong cùng một form nên dùng chung một mức bo góc.
+## Bo góc
+
+- Card và panel lớn dùng rounded-xl.
+- Nút, input, select dùng rounded-lg.
+- Modal dùng rounded-2xl.
+- Badge và avatar dùng rounded-full.
+- Icon đặt trong khối vuông nhỏ, ví dụ icon thống kê, dùng rounded-lg.
+
+## Modal
+
+Mọi modal trong hệ thống dùng chung một cấu trúc.
+
+- Overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50.
+- Khung modal nền trắng, rounded-2xl, shadow-2xl, chiều rộng tối đa tuỳ nội dung, max-w-md cho modal xác nhận, max-w-lg hoặc max-w-2xl cho modal có form dài.
+- Phần header có tiêu đề bên trái, nút đóng dạng icon X bên phải, border-b ngăn với phần thân.
+- Phần thân padding p-6, các trường trong form cách nhau space-y-4.
+- Phần footer border-t, các nút căn phải, nút phụ trước, nút chính sau.
+
+## Bảng dữ liệu
+
+- Header bảng nền bg-gray-50, border-b, chữ text-sm font-medium text-gray-600.
+- Các dòng phân cách bằng divide-y divide-gray-100, hover:bg-gray-50 khi rê chuột qua từng dòng.
+- Cột số tiền hoặc số liệu quan trọng căn phải, in đậm.
+- Thao tác trên từng dòng đặt ở cột cuối, dùng icon button nhỏ thay vì chữ dài.
+
+## Thẻ thống kê
+
+Mỗi trang module đều mở đầu bằng một dãy thẻ thống kê dạng lưới, mỗi thẻ gồm nhãn nhỏ, giá trị lớn, và một icon tròn hoặc vuông bo góc ở góc phải mang màu minh hoạ cho số liệu đó. Có thể kèm thêm một dòng nhỏ so sánh với kỳ trước, dùng icon mũi tên tăng hoặc giảm.
+
+## Không được làm
+
+- Không tự chế thêm tông màu ngoài bảng màu Tailwind đã liệt kê ở trên.
+- Không dùng gradient tím xanh cho hành động thường, chỉ dành riêng cho tính năng AI.
+- Không tự đổi cấu trúc modal đã quy định, giữ đúng thứ tự header, thân, footer.
+- Không trộn nhiều mức bo góc khác nhau trong cùng một nhóm thành phần cùng cấp.
