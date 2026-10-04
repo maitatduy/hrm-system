@@ -10,7 +10,6 @@ import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.service.TokenService;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
