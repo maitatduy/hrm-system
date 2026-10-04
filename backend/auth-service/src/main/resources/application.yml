@@ -1,18 +1,18 @@
 server:
-  port: ${AUTH_SERVICE_PORT:8081}
+  port: ${AUTH_SERVICE_PORT}
 
 spring:
   application:
     name: auth-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/hrm_auth?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:root}
-    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME}
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
-    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
+    show-sql: ${SPRING_JPA_SHOW_SQL}
     open-in-view: false
     properties:
       hibernate:
@@ -20,29 +20,29 @@ spring:
         type:
           preferred_uuid_jdbc_type: VARCHAR
   flyway:
-    enabled: ${SPRING_FLYWAY_ENABLED:true}
-    locations: ${SPRING_FLYWAY_LOCATIONS:classpath:db/migration}
-    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
+    enabled: ${SPRING_FLYWAY_ENABLED}
+    locations: ${SPRING_FLYWAY_LOCATIONS}
+    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE}
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
 
 jwt:
-  secret: ${JWT_SECRET:hrm-system-very-secure-jwt-secret-key-that-is-at-least-256-bits-long}
-  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
-  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
 
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
-    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA:true}
-    fetch-registry: ${EUREKA_FETCH_REGISTRY:true}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY}
 
 springdoc:
   api-docs:
-    path: ${SPRINGDOC_API_DOCS_PATH:/v3/api-docs}
+    path: ${SPRINGDOC_API_DOCS_PATH}
   swagger-ui:
-    path: ${SPRINGDOC_SWAGGER_UI_PATH:/swagger-ui.html}
+    path: ${SPRINGDOC_SWAGGER_UI_PATH}

@@ -1,0 +1,13 @@
+server:
+  port: ${EMPLOYEE_SERVICE_PORT}
+
+spring:
+  application:
+    name: employee-service
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY}

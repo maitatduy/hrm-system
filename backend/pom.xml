@@ -12,7 +12,13 @@
     <description>Root POM for HRM System Microservices</description>
 
     <modules>
+        <module>discovery-server</module>
+        <module>config-server</module>
         <module>api-gateway</module>
         <module>auth-service</module>
+        <module>employee-service</module>
+        <module>attendance-service</module>
+        <module>leave-service</module>
+        <module>payroll-service</module>
     </modules>
 </project>
