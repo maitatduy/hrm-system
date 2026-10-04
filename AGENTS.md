@@ -8,17 +8,19 @@ HRM System là phần mềm quản lý nhân sự nội bộ doanh nghiệp, bac
 
 ## Services
 
-| Service            | Trách nhiệm                                                                       |
-| ------------------ | --------------------------------------------------------------------------------- |
-| api-gateway        | Điểm vào duy nhất của hệ thống, xử lý routing và xác thực JWT                     |
-| discovery-server   | Service discovery, dùng Eureka                                                    |
-| config-server      | Cấu hình tập trung cho toàn hệ thống                                              |
-| auth-service       | Đăng nhập, đăng ký, cấp và refresh JWT, quản lý user và role                      |
-| employee-service   | Nhân viên, phòng ban, chức vụ                                                     |
-| attendance-service | Chấm công                                                                         |
-| leave-service      | Nghỉ phép và quy trình duyệt                                                      |
-| payroll-service    | Tính lương, bảng lương, chỉ ADMIN và HR được truy cập                             |
-| common-lib         | Thư viện dùng chung gồm DTO event, exception, constant, không chứa business logic |
+| Service             | Trách nhiệm                                                                       |
+| ------------------- | --------------------------------------------------------------------------------- |
+| api-gateway         | Điểm vào duy nhất của hệ thống, xử lý routing và xác thực JWT                     |
+| discovery-server    | Service discovery, dùng Eureka                                                    |
+| config-server       | Cấu hình tập trung cho toàn hệ thống                                              |
+| auth-service        | Đăng nhập, đăng ký, cấp và refresh JWT, quản lý user và role                      |
+| employee-service    | Nhân viên, phòng ban, chức vụ                                                     |
+| attendance-service  | Chấm công                                                                         |
+| leave-service       | Nghỉ phép và quy trình duyệt                                                      |
+| payroll-service     | Tính lương, bảng lương, chỉ ADMIN và HR được truy cập                             |
+| recruitment-service | Tin tuyển dụng, ứng viên, tích hợp AI chấm điểm hồ sơ                             |
+| training-service    | Chương trình đào tạo nội bộ và chứng chỉ nhân viên                                |
+| common-lib          | Thư viện dùng chung gồm DTO event, exception, constant, không chứa business logic |
 
 ## Tech Stack
 
