@@ -1,5 +1,6 @@
-package com.company.hrm.auth.dto.response;
+package com.company.hrm.auth.dto;
 
+import com.company.hrm.auth.dto.response.UserSummaryResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,10 +12,14 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TokenRefreshResponse {
+public class TokenPair {
 
     private String accessToken;
 
+    private String refreshToken;
+
     @Builder.Default
     private String tokenType = "Bearer";
+
+    private UserSummaryResponse user;
 }

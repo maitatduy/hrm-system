@@ -1,5 +1,6 @@
 package com.company.hrm.auth.service.impl;
 
+import com.company.hrm.auth.dto.TokenPair;
 import com.company.hrm.auth.dto.request.ChangePasswordRequest;
 import com.company.hrm.auth.dto.request.ForgotPasswordRequest;
 import com.company.hrm.auth.dto.request.LoginRequest;
@@ -19,6 +20,7 @@ import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.service.AuthService;
 import com.company.hrm.auth.service.EmailService;
+import com.company.hrm.auth.service.RateLimitService;
 import com.company.hrm.auth.service.TokenService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -44,29 +46,34 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final RateLimitService rateLimitService;
 
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request, HttpServletResponse response) {
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
-                .orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không chính xác"));
+        String email = request.getEmail().toLowerCase();
+        rateLimitService.checkLoginAllowed(email);
 
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            rateLimitService.recordLoginFailure(email);
+            throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
+        }
+
+        // Chỉ báo trạng thái khóa khi đã đúng mật khẩu, tránh lộ trạng thái tài khoản cho người lạ
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new ForbiddenException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.");
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
-        }
-
+        rateLimitService.resetLoginFailures(email);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        LoginResponse loginResponse = tokenService.generateTokens(user);
+        TokenPair tokenPair = tokenService.generateTokens(user);
 
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, loginResponse.getRefreshToken())
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, tokenPair.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
@@ -75,7 +82,11 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        return loginResponse;
+        return LoginResponse.builder()
+                .accessToken(tokenPair.getAccessToken())
+                .tokenType(tokenPair.getTokenType())
+                .user(tokenPair.getUser())
+                .build();
     }
 
     @Override
@@ -84,9 +95,9 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Refresh token không tồn tại trong cookie");
         }
 
-        TokenRefreshResponse tokenResponse = tokenService.refreshToken(refreshToken);
+        TokenPair tokenPair = tokenService.refreshToken(refreshToken);
 
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, tokenResponse.getRefreshToken())
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, tokenPair.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
@@ -95,7 +106,10 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        return tokenResponse;
+        return TokenRefreshResponse.builder()
+                .accessToken(tokenPair.getAccessToken())
+                .tokenType(tokenPair.getTokenType())
+                .build();
     }
 
     @Override
@@ -129,6 +143,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void forgotPassword(ForgotPasswordRequest request) {
         String email = request.getEmail().toLowerCase();
+        rateLimitService.acquireOtpRequestSlot(email);
         userRepository.findByEmail(email).ifPresent(user -> {
             if (user.getStatus() != UserStatus.LOCKED) {
                 String otp = String.format("%06d", new SecureRandom().nextInt(1_000_000));
@@ -172,5 +187,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+
+        tokenService.revokeAllUserTokens(user.getId().toString());
     }
 }

@@ -1,14 +1,13 @@
 package com.company.hrm.auth.service;
 
-import com.company.hrm.auth.dto.response.LoginResponse;
-import com.company.hrm.auth.dto.response.TokenRefreshResponse;
+import com.company.hrm.auth.dto.TokenPair;
 import com.company.hrm.auth.entity.User;
 
 public interface TokenService {
 
-    LoginResponse generateTokens(User user);
+    TokenPair generateTokens(User user);
 
-    TokenRefreshResponse refreshToken(String refreshToken);
+    TokenPair refreshToken(String refreshToken);
 
     void blacklistAccessToken(String accessToken);
 
