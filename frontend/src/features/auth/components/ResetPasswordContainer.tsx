@@ -9,7 +9,6 @@ import { PasswordChangeForm } from "@/components/PasswordChangeForm";
 import type { ResetPasswordContainerProps, PasswordFormFeedback } from "../types";
 
 export const ResetPasswordContainer = ({
-    email,
     resetToken,
     onSuccessRedirect,
 }: ResetPasswordContainerProps) => {
@@ -57,10 +56,8 @@ export const ResetPasswordContainer = ({
         setFeedback(null);
         resetPasswordMutation.mutate(
             {
-                email,
                 resetToken,
                 newPassword: data.newPassword,
-                confirmPassword: data.confirmPassword,
             },
             {
                 onSuccess: (res) => {

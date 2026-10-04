@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import type { UseFormRegister, UseFormRegisterReturn, FieldErrors } from "react-hook-form";
+import type { ApiMessageResponse } from "@/lib/apiError";
 
 export type UserRole = "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE";
+
+export type UserStatus = "ACTIVE" | "LOCKED";
 
 export interface LoginFormData {
     email: string;
@@ -12,22 +15,21 @@ export interface LoginFormData {
 export interface LoginRequest {
     readonly email: string;
     readonly password: string;
-    readonly rememberMe: boolean;
 }
 
+/** Khớp với UserSummaryResponse của auth-service. */
 export interface AuthUserSession {
     readonly id: string;
-    readonly employeeId: string;
-    readonly fullName: string;
     readonly email: string;
-    readonly roles: readonly UserRole[];
+    readonly role: UserRole;
+    readonly status: UserStatus;
+    readonly employeeId: string | null;
+    readonly lastLoginAt: string | null;
 }
 
 export interface LoginResponse {
     readonly accessToken: string;
-    readonly refreshToken?: string;
     readonly tokenType: "Bearer";
-    readonly expiresIn: number;
     readonly user: AuthUserSession;
 }
 
@@ -93,17 +95,12 @@ export interface AuthState {
     readonly isAuthenticated: boolean;
     readonly sessionUser: AuthUserSession | null;
     readonly setAuth: (payload: { accessToken: string; user: AuthUserSession }) => void;
+    readonly setAccessToken: (accessToken: string) => void;
+    readonly setSessionUser: (user: AuthUserSession) => void;
     readonly clearAuth: () => void;
 }
 
-export interface LogoutRequest {
-    readonly refreshToken?: string;
-}
-
-export interface LogoutResponse {
-    readonly success: boolean;
-    readonly message: string;
-}
+export type LogoutResponse = ApiMessageResponse;
 
 export interface ConfirmDialogProps {
     readonly isOpen: boolean;
@@ -147,10 +144,7 @@ export interface ForgotPasswordRequest {
     readonly email: string;
 }
 
-export interface ForgotPasswordResponse {
-    readonly success: boolean;
-    readonly message: string;
-}
+export type ForgotPasswordResponse = ApiMessageResponse;
 
 export interface FormFeedbackState {
     readonly type: "success" | "error" | "info";
@@ -186,19 +180,14 @@ export interface VerifyOtpRequest {
 }
 
 export interface VerifyOtpResponse {
-    readonly success: boolean;
-    readonly message: string;
-    readonly resetToken?: string;
+    readonly resetToken: string;
 }
 
 export interface ResendOtpRequest {
     readonly email: string;
 }
 
-export interface ResendOtpResponse {
-    readonly success: boolean;
-    readonly message: string;
-}
+export type ResendOtpResponse = ApiMessageResponse;
 
 export interface OtpFeedbackState {
     readonly type: "success" | "error" | "info";
@@ -261,27 +250,18 @@ export interface OtpVerificationFormProps {
 }
 
 export interface ResetPasswordRequest {
-    readonly email: string;
     readonly resetToken: string;
     readonly newPassword: string;
-    readonly confirmPassword: string;
 }
 
-export interface ResetPasswordResponse {
-    readonly success: boolean;
-    readonly message: string;
-}
+export type ResetPasswordResponse = ApiMessageResponse;
 
 export interface ChangePasswordRequest {
     readonly currentPassword: string;
     readonly newPassword: string;
-    readonly confirmPassword: string;
 }
 
-export interface ChangePasswordResponse {
-    readonly success: boolean;
-    readonly message: string;
-}
+export type ChangePasswordResponse = ApiMessageResponse;
 
 export interface PasswordFormFeedback {
     readonly type: "success" | "error" | "info";
@@ -331,7 +311,6 @@ export interface PasswordChangeFormProps {
 }
 
 export interface ResetPasswordContainerProps {
-    readonly email: string;
     readonly resetToken: string;
     readonly onSuccessRedirect?: (loginUrl: string) => void;
 }

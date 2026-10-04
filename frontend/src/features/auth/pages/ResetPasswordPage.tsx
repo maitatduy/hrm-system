@@ -22,7 +22,7 @@ export const ResetPasswordPage = () => {
         <AuthLayout>
             <AuthCard>
                 <AuthHeader title="Đặt lại mật khẩu" />
-                <ResetPasswordContainer email={email} resetToken={token} />
+                <ResetPasswordContainer resetToken={token} />
                 <div className="pt-2 text-center">
                     <BackToLoginLink to="/login" label="Quay lại trang đăng nhập" />
                 </div>

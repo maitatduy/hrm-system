@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { UserProfileDropdown } from "@/components/UserProfileDropdown";
 import { LogoutDialogContainer } from "./LogoutDialogContainer";
 import { useAuthStore } from "../store";
+import { ROLE_LABELS, getInitialsFromEmail } from "../roles";
 
 export const UserProfileContainer = () => {
     const sessionUser = useAuthStore((state) => state.sessionUser);
@@ -28,13 +29,6 @@ export const UserProfileContainer = () => {
         };
     }, [isDropdownOpen]);
 
-    const getInitials = (name?: string): string => {
-        if (!name) return "NA";
-        const parts = name.trim().split(" ");
-        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    };
-
     return (
         <div className="relative inline-block" ref={containerRef}>
             <button
@@ -45,15 +39,15 @@ export const UserProfileContainer = () => {
                 aria-haspopup="true"
             >
                 <div className="w-10 h-10 rounded-full bg-[#d5e3ff] flex items-center justify-center text-[#005db2] font-bold text-sm ring-1 ring-[#e6e6e6]">
-                    {getInitials(sessionUser?.fullName)}
+                    {getInitialsFromEmail(sessionUser?.email)}
                 </div>
 
                 <div className="hidden md:flex flex-col text-left">
                     <span className="text-[15px] font-semibold text-[#000000] leading-tight">
-                        {sessionUser?.fullName || "Nguyễn Văn An"}
+                        {sessionUser?.email}
                     </span>
                     <span className="text-[13px] text-[#615d59] leading-tight mt-1.5">
-                        {sessionUser?.roles?.join(", ") || "Chuyên viên Quản trị"}
+                        {sessionUser ? ROLE_LABELS[sessionUser.role] : ""}
                     </span>
                 </div>
 
