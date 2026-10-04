@@ -12,6 +12,7 @@
     <description>Root POM for HRM System Microservices</description>
 
     <modules>
+        <module>api-gateway</module>
         <module>auth-service</module>
     </modules>
 </project>

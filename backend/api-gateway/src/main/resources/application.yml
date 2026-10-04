@@ -1,0 +1,27 @@
+server:
+  port: ${API_GATEWAY_PORT}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: ${GATEWAY_DISCOVERY_LOCATOR_ENABLED}
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URI}
+          predicates:
+            - Path=/api/auth/**, /api/accounts/**
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY}
