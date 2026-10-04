@@ -1,0 +1,12 @@
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

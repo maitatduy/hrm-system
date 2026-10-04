@@ -1,0 +1,2 @@
+server:
+  port: ${LEAVE_SERVICE_PORT}

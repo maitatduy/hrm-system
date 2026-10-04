@@ -1,0 +1,2 @@
+server:
+  port: ${EMPLOYEE_SERVICE_PORT}
