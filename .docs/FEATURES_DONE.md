@@ -17,6 +17,8 @@
 - [x] **Kế hoạch Backend auth-service**: Hoàn thành bản thiết kế kỹ thuật backend (`00-auth-service-plan.md`) gồm 3 trụ cột: thiết kế dữ liệu bảng users, giao kèo API xác thực/tài khoản và kiến trúc tích hợp Redis/OpenFeign.
 - [x] **Thi công Backend auth-service**: Khởi tạo cấu trúc Maven multi-module, Flyway migration V1 bảng users, JPA entities/enums, bảo mật JWT stateless với Refresh Token Rotation trên Redis, OpenFeign sang employee-service, toàn bộ API Auth và Account management.
 - [x] **Thi công Backend api-gateway**: Khởi tạo module api-gateway, cấu hình routing sang auth-service, thiết lập CORS cho phép frontend localhost:5173 và hỗ trợ credentials cho HttpOnly cookie.
+- [x] **Thi công Backend discovery-server**: Khởi tạo discovery-server (Eureka Server cổng 8761), cấu hình toàn bộ 7 service còn lại thành Eureka Client tự động đăng ký vào registry.
+- [x] **Thi công Backend config-server**: Khởi tạo config-server (Spring Cloud Config cổng 8888) dùng profile native, cấu hình kho lưu trữ file cấu hình local cho tất cả microservices.
 
 ---
 
@@ -30,3 +32,4 @@
 - **[2026-10-04 12:18]**: Hoàn thành bản thiết kế backend (00-auth-service-plan.md) cho auth-service gồm schema bảng users, giao kèo 12 API xác thực/tài khoản và kiến trúc Redis/OpenFeign.
 - **[2026-10-04 17:15]**: Hoàn thành thi công toàn bộ mã nguồn auth-service (database, JPA entity, JWT authentication với Redis refresh token rotation, OpenFeign client và API quản lý tài khoản).
 - **[2026-10-04 18:14]**: Khởi tạo module api-gateway, cấu hình routing, thiết lập CORS (hỗ trợ credentials) và chuẩn hóa file cấu hình .env cho toàn bộ backend.
+- **[2026-10-04 18:56]**: Hoàn thành discovery-server (Eureka Server) và config-server (Spring Cloud Config native profile), chuẩn hóa cấu hình Eureka Client và biến môi trường cho 7 microservices.
