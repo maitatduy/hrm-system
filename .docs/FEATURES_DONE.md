@@ -12,6 +12,11 @@
 - [x] **Màn hình Xác thực mã OTP (OTP Verification)**: Hoàn thành ý tưởng (`04-otp-verification-idea.md`), frontend plan (`04-otp-verification-plan.md`), design brief (`04-otp-verification-brief.md`), bản vẽ Stitch và triển khai code (OtpVerificationPage, OtpVerificationFormContainer, OtpVerificationForm, OtpInputGroup, OtpSlotInput, MaskedEmailNotice, useVerifyOtpMutation, useResendOtpMutation).
 - [x] **Màn hình Đổi & Đặt lại mật khẩu (Change / Reset Password)**: Hoàn thành ý tưởng (`05-change-password-idea.md`), frontend plan (`05-change-password-plan.md`), design brief (`05-change-password-brief.md`), bản vẽ Stitch và triển khai code (ResetPasswordPage, ResetPasswordContainer, ChangePasswordContainer, PasswordChangeForm, SettingsCard, useResetPasswordMutation, useChangePasswordMutation).
 
+### Backend & Microservices
+
+- [x] **Kế hoạch Backend auth-service**: Hoàn thành bản thiết kế kỹ thuật backend (`00-auth-service-plan.md`) gồm 3 trụ cột: thiết kế dữ liệu bảng users, giao kèo API xác thực/tài khoản và kiến trúc tích hợp Redis/OpenFeign.
+- [x] **Thi công Backend auth-service**: Khởi tạo cấu trúc Maven multi-module, Flyway migration V1 bảng users, JPA entities/enums, bảo mật JWT stateless với Refresh Token Rotation trên Redis, OpenFeign sang employee-service, toàn bộ API Auth và Account management.
+
 ---
 
 ## 2. Nhật ký cập nhật
@@ -21,3 +26,5 @@
 - **[2026-10-02 09:57]**: Hoàn thành thiết kế và triển khai code tính năng Đăng xuất gồm ConfirmDialog, UserProfileDropdown, useLogoutMutation và tích hợp Master Layout.
 - **[2026-10-02 11:20]**: Hoàn thành thiết kế Stitch và thi công code màn hình Quên mật khẩu cùng Xác thực mã OTP, tích hợp TanStack Query và router.
 - **[2026-10-02 13:35]**: Hoàn thành thiết kế Stitch và thi công code màn hình Đặt lại mật khẩu cùng Đổi mật khẩu trong Cài đặt, tích hợp TanStack Query và router.
+- **[2026-10-04 12:18]**: Hoàn thành bản thiết kế backend (00-auth-service-plan.md) cho auth-service gồm schema bảng users, giao kèo 12 API xác thực/tài khoản và kiến trúc Redis/OpenFeign.
+- **[2026-10-04 17:15]**: Hoàn thành thi công toàn bộ mã nguồn auth-service (database, JPA entity, JWT authentication với Redis refresh token rotation, OpenFeign client và API quản lý tài khoản).
