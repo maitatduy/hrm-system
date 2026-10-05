@@ -1,8 +1,9 @@
 import { apiClient } from "@/lib/axios";
+import type { ApiResponse } from "@/lib/apiError";
 import type {
+    AuthUserSession,
     LoginRequest,
     LoginResponse,
-    LogoutRequest,
     LogoutResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -16,44 +17,57 @@ import type {
     ChangePasswordResponse,
 } from "./types";
 
+const unwrapData = <T>(body: ApiResponse<T>): T => {
+    if (body.data === undefined || body.data === null) {
+        throw new Error("Phản hồi từ máy chủ không chứa dữ liệu");
+    }
+    return body.data;
+};
+
 export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>("/v1/auth/login", data);
+    const response = await apiClient.post<ApiResponse<LoginResponse>>("/api/auth/login", data);
+    return unwrapData(response.data);
+};
+
+export const logoutApi = async (): Promise<LogoutResponse> => {
+    const response = await apiClient.post<ApiResponse<null>>("/api/auth/logout");
     return response.data;
 };
 
-export const logoutApi = async (data?: LogoutRequest): Promise<LogoutResponse> => {
-    const response = await apiClient.post<LogoutResponse>("/v1/auth/logout", data);
-    return response.data;
+export const getCurrentUserApi = async (): Promise<AuthUserSession> => {
+    const response = await apiClient.get<ApiResponse<AuthUserSession>>("/api/auth/me");
+    return unwrapData(response.data);
 };
 
 export const forgotPasswordApi = async (
     data: ForgotPasswordRequest,
 ): Promise<ForgotPasswordResponse> => {
-    const response = await apiClient.post<ForgotPasswordResponse>("/v1/auth/forgot-password", data);
+    const response = await apiClient.post<ApiResponse<null>>("/api/auth/forgot-password", data);
     return response.data;
 };
 
 export const verifyOtpApi = async (data: VerifyOtpRequest): Promise<VerifyOtpResponse> => {
-    const response = await apiClient.post<VerifyOtpResponse>("/v1/auth/verify-otp", data);
-    return response.data;
+    const response = await apiClient.post<ApiResponse<VerifyOtpResponse>>(
+        "/api/auth/verify-otp",
+        data,
+    );
+    return unwrapData(response.data);
 };
 
-export const resendOtpApi = async (data: ResendOtpRequest): Promise<ResendOtpResponse> => {
-    const response = await apiClient.post<ResendOtpResponse>("/v1/auth/resend-otp", data);
-    return response.data;
-};
+// Backend không có endpoint resend riêng: gửi lại OTP chính là gọi lại forgot-password (có cooldown 60 giây)
+export const resendOtpApi = async (data: ResendOtpRequest): Promise<ResendOtpResponse> =>
+    forgotPasswordApi(data);
 
 export const resetPasswordApi = async (
     data: ResetPasswordRequest,
 ): Promise<ResetPasswordResponse> => {
-    const response = await apiClient.post<ResetPasswordResponse>("/v1/auth/reset-password", data);
+    const response = await apiClient.post<ApiResponse<null>>("/api/auth/reset-password", data);
     return response.data;
 };
 
 export const changePasswordApi = async (
     data: ChangePasswordRequest,
 ): Promise<ChangePasswordResponse> => {
-    const response = await apiClient.post<ChangePasswordResponse>("/v1/auth/change-password", data);
+    const response = await apiClient.put<ApiResponse<null>>("/api/auth/change-password", data);
     return response.data;
 };
-

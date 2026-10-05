@@ -1,6 +1,5 @@
 package com.company.hrm.auth.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,9 +17,6 @@ public class LoginResponse {
 
     @Builder.Default
     private String tokenType = "Bearer";
-
-    @JsonIgnore
-    private String refreshToken;
 
     private UserSummaryResponse user;
 }

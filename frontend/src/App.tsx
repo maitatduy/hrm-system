@@ -8,6 +8,7 @@ import { ResetPasswordPage } from "./features/auth/pages/ResetPasswordPage";
 import { UserProfileContainer } from "./features/auth/components/UserProfileContainer";
 import { SettingsCard } from "./components/SettingsCard";
 import { ChangePasswordContainer } from "./features/auth/components/ChangePasswordContainer";
+import { ProtectedRoute } from "./features/auth/components/ProtectedRoute";
 
 const DashboardShell = ({
     title,
@@ -86,31 +87,37 @@ export const App = () => {
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/verify-otp" element={<OtpVerificationPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
-                    <Route
-                        path="/dashboard"
-                        element={<DashboardShell title="Admin/HR Dashboard" />}
-                    />
-                    <Route
-                        path="/management/dashboard"
-                        element={<DashboardShell title="Manager Dashboard" />}
-                    />
-                    <Route
-                        path="/portal/dashboard"
-                        element={<DashboardShell title="Employee Portal" />}
-                    />
-                    <Route
-                        path="/settings"
-                        element={
-                            <DashboardShell title="Cài đặt hệ thống & Bảo mật tài khoản">
-                                <SettingsCard
-                                    title="Đổi mật khẩu tài khoản"
-                                    description="Cập nhật mật khẩu định kỳ giúp tăng cường an toàn dữ liệu nhân sự và thông tin cá nhân."
-                                >
-                                    <ChangePasswordContainer />
-                                </SettingsCard>
-                            </DashboardShell>
-                        }
-                    />
+                    <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
+                        <Route
+                            path="/dashboard"
+                            element={<DashboardShell title="Admin/HR Dashboard" />}
+                        />
+                    </Route>
+                    <Route element={<ProtectedRoute allowedRoles={["MANAGER"]} />}>
+                        <Route
+                            path="/management/dashboard"
+                            element={<DashboardShell title="Manager Dashboard" />}
+                        />
+                    </Route>
+                    <Route element={<ProtectedRoute />}>
+                        <Route
+                            path="/portal/dashboard"
+                            element={<DashboardShell title="Employee Portal" />}
+                        />
+                        <Route
+                            path="/settings"
+                            element={
+                                <DashboardShell title="Cài đặt hệ thống & Bảo mật tài khoản">
+                                    <SettingsCard
+                                        title="Đổi mật khẩu tài khoản"
+                                        description="Cập nhật mật khẩu định kỳ giúp tăng cường an toàn dữ liệu nhân sự và thông tin cá nhân."
+                                    >
+                                        <ChangePasswordContainer />
+                                    </SettingsCard>
+                                </DashboardShell>
+                            }
+                        />
+                    </Route>
                 </Routes>
             </BrowserRouter>
         </QueryClientProvider>

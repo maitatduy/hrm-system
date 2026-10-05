@@ -5,7 +5,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { loginFormSchema } from "../schemas";
 import { useLoginMutation } from "../hooks/useLoginMutation";
 import { LoginForm } from "./LoginForm";
-import type { LoginFormData, UserRole } from "../types";
+import { getHomePathByRole, getSafeRedirectPath } from "../roles";
+import type { LoginFormData } from "../types";
 
 export const LoginFormContainer = () => {
     const navigate = useNavigate();
@@ -27,16 +28,6 @@ export const LoginFormContainer = () => {
         },
     });
 
-    const getRedirectPathByRole = (roles: readonly UserRole[]): string => {
-        if (roles.includes("ADMIN") || roles.includes("HR")) {
-            return "/dashboard";
-        }
-        if (roles.includes("MANAGER")) {
-            return "/management/dashboard";
-        }
-        return "/portal/dashboard";
-    };
-
     const onSubmit = (formData: LoginFormData) => {
         setServerError(null);
 
@@ -44,17 +35,13 @@ export const LoginFormContainer = () => {
             {
                 email: formData.email,
                 password: formData.password,
-                rememberMe: formData.rememberMe,
             },
             {
                 onSuccess: (response) => {
-                    const redirectParam = searchParams.get("redirect");
-                    if (redirectParam && redirectParam.startsWith("/")) {
-                        navigate(redirectParam, { replace: true });
-                    } else {
-                        const destination = getRedirectPathByRole(response.user.roles);
-                        navigate(destination, { replace: true });
-                    }
+                    const redirectPath = getSafeRedirectPath(searchParams.get("redirect"));
+                    navigate(redirectPath ?? getHomePathByRole(response.user.role), {
+                        replace: true,
+                    });
                 },
                 onError: (error) => {
                     setServerError(

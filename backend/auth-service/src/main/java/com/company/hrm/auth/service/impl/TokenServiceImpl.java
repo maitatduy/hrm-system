@@ -1,10 +1,11 @@
 package com.company.hrm.auth.service.impl;
 
-import com.company.hrm.auth.dto.response.LoginResponse;
-import com.company.hrm.auth.dto.response.TokenRefreshResponse;
+import com.company.hrm.auth.dto.TokenPair;
 import com.company.hrm.auth.dto.response.UserSummaryResponse;
 import com.company.hrm.auth.entity.User;
+import com.company.hrm.auth.enums.UserStatus;
 import com.company.hrm.auth.exception.BadRequestException;
+import com.company.hrm.auth.exception.TooManyRequestsException;
 import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
@@ -16,14 +17,19 @@ import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +56,11 @@ public class TokenServiceImpl implements TokenService {
     private static final String REDIS_BLACKLIST_PREFIX = "auth:blacklist:";
     private static final String REDIS_OTP_PREFIX = "auth:otp:";
     private static final String REDIS_RESET_PREFIX = "auth:reset:";
+    private static final String REDIS_OTP_ATTEMPTS_PREFIX = "auth:otp:attempts:";
+
+    private static final Duration OTP_TTL = Duration.ofMinutes(5);
+    private static final int MAX_OTP_ATTEMPTS = 5;
+    private static final Duration REFRESH_REUSE_GRACE = Duration.ofSeconds(10);
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
@@ -57,13 +68,13 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public LoginResponse generateTokens(User user) {
+    public TokenPair generateTokens(User user) {
         String accessToken = createAccessToken(user);
         String refreshToken = createRefreshToken(user);
 
         UserSummaryResponse userSummary = userMapper.toSummaryResponse(user);
 
-        return LoginResponse.builder()
+        return TokenPair.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
@@ -72,7 +83,7 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public TokenRefreshResponse refreshToken(String refreshToken) {
+    public TokenPair refreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new UnauthorizedException("Refresh token không tồn tại");
         }
@@ -94,24 +105,34 @@ public class TokenServiceImpl implements TokenService {
             throw new UnauthorizedException("Token không hợp lệ");
         }
 
-        String redisKey = REDIS_REFRESH_PREFIX + userIdStr + ":" + jti;
-        Boolean exists = redisTemplate.hasKey(redisKey);
+        // DEL là thao tác atomic: chỉ đúng một request được "tiêu thụ" refresh token này
+        String redisKey = refreshKey(userIdStr, jti);
+        String graceKey = refreshGraceKey(userIdStr, jti);
+        boolean consumed = Boolean.TRUE.equals(redisTemplate.delete(redisKey));
 
-        if (Boolean.FALSE.equals(exists)) {
+        if (consumed) {
+            redisTemplate.opsForValue().set(graceKey, "rotated", REFRESH_REUSE_GRACE);
+        } else if (!Boolean.TRUE.equals(redisTemplate.hasKey(graceKey))) {
             log.warn("Cảnh báo bảo mật: Phát hiện sử dụng lại Refresh Token đã hết hiệu lực của user: {}. Thu hồi toàn bộ phiên đăng nhập!", userIdStr);
             revokeAllUserTokens(userIdStr);
             throw new UnauthorizedException("Phát hiện bất thường về phiên đăng nhập. Vui lòng đăng nhập lại!");
+        } else {
+            // Request đồng thời (nhiều tab cùng refresh) trong khoảng ân hạn: cấp cặp token mới, không coi là tấn công
+            log.debug("Refresh token {} của user {} được dùng lại trong khoảng ân hạn", jti, userIdStr);
         }
-
-        redisTemplate.delete(redisKey);
 
         User user = userRepository.findById(UUID.fromString(userIdStr))
                 .orElseThrow(() -> new UnauthorizedException("Người dùng không còn tồn tại"));
 
+        if (user.getStatus() == UserStatus.LOCKED) {
+            revokeAllUserTokens(userIdStr);
+            throw new UnauthorizedException("Tài khoản đã bị khóa. Vui lòng liên hệ Quản trị viên.");
+        }
+
         String newAccessToken = createAccessToken(user);
         String newRefreshToken = createRefreshToken(user);
 
-        return TokenRefreshResponse.builder()
+        return TokenPair.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
@@ -133,12 +154,18 @@ public class TokenServiceImpl implements TokenService {
                     .parseSignedClaims(token)
                     .getPayload();
 
+            String jti = claims.getId();
             Date expiration = claims.getExpiration();
             long remainingTimeMs = expiration.getTime() - System.currentTimeMillis();
 
             if (remainingTimeMs > 0) {
-                String blacklistKey = REDIS_BLACKLIST_PREFIX + token;
-                redisTemplate.opsForValue().set(blacklistKey, "revoked", remainingTimeMs, TimeUnit.MILLISECONDS);
+                if (jti != null && !jti.isBlank()) {
+                    String blacklistKey = REDIS_BLACKLIST_PREFIX + jti;
+                    redisTemplate.opsForValue().set(blacklistKey, "revoked", remainingTimeMs, TimeUnit.MILLISECONDS);
+                } else {
+                    String blacklistKey = REDIS_BLACKLIST_PREFIX + token;
+                    redisTemplate.opsForValue().set(blacklistKey, "revoked", remainingTimeMs, TimeUnit.MILLISECONDS);
+                }
             }
         } catch (JwtException e) {
             log.debug("Token không hợp lệ hoặc đã hết hạn khi blacklist, bỏ qua: {}", e.getMessage());
@@ -161,7 +188,7 @@ public class TokenServiceImpl implements TokenService {
             String userIdStr = claims.getSubject();
             String jti = claims.getId();
             if (userIdStr != null && jti != null) {
-                redisTemplate.delete(REDIS_REFRESH_PREFIX + userIdStr + ":" + jti);
+                redisTemplate.delete(List.of(refreshKey(userIdStr, jti), refreshGraceKey(userIdStr, jti)));
             }
         } catch (JwtException e) {
             log.debug("Token không hợp lệ khi thu hồi: {}", e.getMessage());
@@ -170,23 +197,44 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public void storeOtp(String email, String otp) {
-        String key = REDIS_OTP_PREFIX + email.toLowerCase();
-        redisTemplate.opsForValue().set(key, otp, 5, TimeUnit.MINUTES);
+        String normalizedEmail = email.toLowerCase();
+        redisTemplate.opsForValue().set(REDIS_OTP_PREFIX + normalizedEmail, otp, OTP_TTL);
+        redisTemplate.delete(REDIS_OTP_ATTEMPTS_PREFIX + normalizedEmail);
     }
 
     @Override
     public String verifyOtpAndGenerateResetToken(String email, String otp) {
-        String key = REDIS_OTP_PREFIX + email.toLowerCase();
-        String storedOtp = redisTemplate.opsForValue().get(key);
+        String normalizedEmail = email.toLowerCase();
+        String otpKey = REDIS_OTP_PREFIX + normalizedEmail;
+        String attemptsKey = REDIS_OTP_ATTEMPTS_PREFIX + normalizedEmail;
+        String storedOtp = redisTemplate.opsForValue().get(otpKey);
 
-        if (storedOtp == null || !storedOtp.equals(otp)) {
+        if (storedOtp == null) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn");
         }
 
-        redisTemplate.delete(key);
+        if (!constantTimeEquals(storedOtp, otp)) {
+            Long attempts = redisTemplate.opsForValue().increment(attemptsKey);
+            if (attempts != null && attempts == 1) {
+                redisTemplate.expire(attemptsKey, OTP_TTL);
+            }
+            if (attempts != null && attempts >= MAX_OTP_ATTEMPTS) {
+                // Hủy OTP để chặn dò mã, người dùng phải yêu cầu mã mới
+                redisTemplate.delete(List.of(otpKey, attemptsKey));
+                log.warn("Email {} nhập sai OTP {} lần, đã hủy mã OTP hiện tại", normalizedEmail, attempts);
+                throw new TooManyRequestsException("Bạn đã nhập sai mã OTP quá số lần cho phép. Vui lòng yêu cầu mã mới.");
+            }
+            throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn");
+        }
+
+        // Chỉ một request được tiêu thụ OTP nếu có nhiều request đúng mã gửi đồng thời
+        if (!Boolean.TRUE.equals(redisTemplate.delete(otpKey))) {
+            throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn");
+        }
+        redisTemplate.delete(attemptsKey);
 
         String resetToken = UUID.randomUUID().toString();
-        redisTemplate.opsForValue().set(REDIS_RESET_PREFIX + resetToken, email.toLowerCase(), 15, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set(REDIS_RESET_PREFIX + resetToken, normalizedEmail, 15, TimeUnit.MINUTES);
 
         return resetToken;
     }
@@ -207,17 +255,33 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public void revokeAllUserTokens(String userId) {
-        Set<String> keys = redisTemplate.keys(REDIS_REFRESH_PREFIX + userId + ":*");
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
+        ScanOptions options = ScanOptions.scanOptions()
+                .match(REDIS_REFRESH_PREFIX + userId + ":*")
+                .count(100)
+                .build();
+
+        Set<String> keysToDelete = new HashSet<>();
+        try (Cursor<String> cursor = redisTemplate.scan(options)) {
+            while (cursor.hasNext()) {
+                keysToDelete.add(cursor.next());
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi scan refresh token của user {}: {}", userId, e.getMessage());
+        }
+
+        if (!keysToDelete.isEmpty()) {
+            redisTemplate.delete(keysToDelete);
+            log.info("Đã thu hồi {} refresh token của user {}", keysToDelete.size(), userId);
         }
     }
 
     private String createAccessToken(User user) {
         Instant now = Instant.now();
         Instant expiry = now.plus(Duration.ofMillis(accessTokenExpirationMs));
+        String jti = UUID.randomUUID().toString();
 
         return Jwts.builder()
+                .id(jti)
                 .subject(user.getId().toString())
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
@@ -241,9 +305,28 @@ public class TokenServiceImpl implements TokenService {
                 .signWith(getSigningKey())
                 .compact();
 
-        String redisKey = REDIS_REFRESH_PREFIX + user.getId() + ":" + jti;
+        String redisKey = refreshKey(user.getId().toString(), jti);
         redisTemplate.opsForValue().set(redisKey, "valid", refreshTokenExpirationMs, TimeUnit.MILLISECONDS);
 
         return token;
+    }
+
+    // Grace key nằm dưới prefix auth:refresh:{userId}: nên revokeAllUserTokens cũng xóa luôn
+    private String refreshKey(String userId, String jti) {
+        return REDIS_REFRESH_PREFIX + userId + ":" + jti;
+    }
+
+    private String refreshGraceKey(String userId, String jti) {
+        return REDIS_REFRESH_PREFIX + userId + ":grace:" + jti;
+    }
+
+    private boolean constantTimeEquals(String expected, String actual) {
+        if (actual == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                actual.getBytes(StandardCharsets.UTF_8)
+        );
     }
 }

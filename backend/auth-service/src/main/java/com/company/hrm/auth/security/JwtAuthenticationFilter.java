@@ -1,6 +1,7 @@
 package com.company.hrm.auth.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -26,17 +27,24 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Token lỗi (hết hạn, sai chữ ký, bị thu hồi) không chặn request ngay tại filter mà chỉ ghi lý do vào
+ * request attribute. Endpoint public vẫn đi tiếp bình thường, endpoint cần xác thực sẽ được
+ * {@link RestAuthenticationEntryPoint} trả về 401 kèm lý do này.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    public static final String AUTH_ERROR_ATTRIBUTE = "auth.tokenError";
+
+    private static final String REDIS_BLACKLIST_PREFIX = "auth:blacklist:";
+
     private final StringRedisTemplate redisTemplate;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
-
-    private static final String REDIS_BLACKLIST_PREFIX = "auth:blacklist:";
 
     @Override
     protected void doFilterInternal(
@@ -47,13 +55,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (StringUtils.hasText(token)) {
-            String blacklistKey = REDIS_BLACKLIST_PREFIX + token;
-            if (redisTemplate.hasKey(blacklistKey)) {
-                log.debug("Token nằm trong blacklist: {}", token);
-                filterChain.doFilter(request, response);
-                return;
-            }
-
             try {
                 SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
                 Claims claims = Jwts.parser()
@@ -62,28 +63,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .parseSignedClaims(token)
                         .getPayload();
 
-                String userId = claims.getSubject();
-                String role = claims.get("role", String.class);
-
-                if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    List<SimpleGrantedAuthority> authorities = role != null
-                            ? Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
-                            : Collections.emptyList();
-
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userId,
-                            null,
-                            authorities
-                    );
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (isBlacklisted(claims.getId(), token)) {
+                    log.warn("Token đã bị đưa vào blacklist: jti={}", claims.getId());
+                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, "Token đã bị thu hồi hoặc không còn hiệu lực");
+                } else {
+                    authenticate(request, claims);
                 }
+            } catch (ExpiredJwtException e) {
+                request.setAttribute(AUTH_ERROR_ATTRIBUTE, "Access token đã hết hạn");
             } catch (JwtException e) {
                 log.debug("JWT xác thực không hợp lệ: {}", e.getMessage());
+                request.setAttribute(AUTH_ERROR_ATTRIBUTE, "Access token không hợp lệ");
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isBlacklisted(String jti, String token) {
+        if (jti != null && Boolean.TRUE.equals(redisTemplate.hasKey(REDIS_BLACKLIST_PREFIX + jti))) {
+            return true;
+        }
+        return Boolean.TRUE.equals(redisTemplate.hasKey(REDIS_BLACKLIST_PREFIX + token));
+    }
+
+    private void authenticate(HttpServletRequest request, Claims claims) {
+        String userId = claims.getSubject();
+        String role = claims.get("role", String.class);
+
+        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            List<SimpleGrantedAuthority> authorities = role != null
+                    ? Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                    : Collections.emptyList();
+
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    userId,
+                    null,
+                    authorities
+            );
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
     }
 
     private String resolveToken(HttpServletRequest request) {
