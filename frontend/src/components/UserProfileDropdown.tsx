@@ -1,5 +1,6 @@
 import { User, KeyRound, LogOut } from "lucide-react";
 import type { AuthUserSession } from "@/features/auth/types";
+import { ROLE_LABELS } from "@/features/auth/roles";
 
 export interface UserProfileDropdownProps {
     readonly isOpen: boolean;
@@ -20,10 +21,10 @@ export const UserProfileDropdown = ({
         <div className="absolute right-0 top-full mt-2 w-72 bg-[#ffffff] rounded-md border border-[#e6e6e6] shadow-[0_8px_28px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
             <div className="px-4.5 py-3 border-b border-[#e6e6e6]">
                 <p className="text-[15px] font-semibold text-[#000000] truncate">
-                    {user?.fullName || "Nguyễn Văn An"}
+                    {user?.email}
                 </p>
                 <p className="text-[13px] text-[#615d59] truncate mt-0.5">
-                    {user?.email || "an.nguyen@hrmcorp.vn"}
+                    {user ? ROLE_LABELS[user.role] : ""}
                 </p>
             </div>
 
