@@ -97,6 +97,23 @@ class EmailServiceImplTest {
         }
     }
 
+    @Test
+    void mailContentNeverPrintsSecretsOrFullRecipient() {
+        EmailServiceImpl.MailContent content = new EmailServiceImpl.MailContent(
+                "email tạo tài khoản",
+                RECIPIENT,
+                EmailServiceImpl.ACCOUNT_CREATED_SUBJECT,
+                "mail/account-created",
+                java.util.Map.of("temporaryPassword", "Kp7#mQ2xVr9$tLw4"),
+                "Mật khẩu tạm thời: Kp7#mQ2xVr9$tLw4"
+        );
+
+        assertThat(content.toString())
+                .doesNotContain("Kp7#mQ2xVr9$tLw4")
+                .doesNotContain(RECIPIENT)
+                .contains("n***@hrm.vn");
+    }
+
     @Nested
     class Retry {
 

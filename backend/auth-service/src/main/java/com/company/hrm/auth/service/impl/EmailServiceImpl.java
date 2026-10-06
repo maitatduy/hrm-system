@@ -92,8 +92,11 @@ public class EmailServiceImpl implements EmailService {
         ));
     }
 
-    /** Nội dung một email, {@code kind} chỉ dùng để ghi log, không chứa dữ liệu nhạy cảm. */
-    private record MailContent(
+    /**
+     * Nội dung một email, {@code kind} chỉ dùng để ghi log. {@code variables} và {@code plainText} chứa OTP
+     * hoặc mật khẩu tạm, nên toString chỉ in loại email và địa chỉ đã che.
+     */
+    record MailContent(
             String kind,
             String toEmail,
             String subject,
@@ -101,6 +104,10 @@ public class EmailServiceImpl implements EmailService {
             Map<String, Object> variables,
             String plainText
     ) {
+        @Override
+        public String toString() {
+            return "MailContent[kind=" + kind + ", to=" + maskEmail(toEmail) + "]";
+        }
     }
 
     private CompletableFuture<Void> sendWithRetry(MailContent content) {
