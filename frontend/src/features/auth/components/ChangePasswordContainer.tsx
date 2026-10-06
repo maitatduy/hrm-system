@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FormFeedback } from "@/components/FormFeedbackBanner";
 import { changePasswordSchema, type ChangePasswordFormValues } from "../schemas";
@@ -19,15 +19,12 @@ export const ChangePasswordContainer = () => {
     const {
         register,
         handleSubmit,
-        control,
-        reset,
         formState: { errors, isValid },
     } = useForm<ChangePasswordFormValues>({
         resolver: zodResolver(changePasswordSchema),
         mode: "onChange",
         defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
     });
-    const newPasswordValue = useWatch({ control, name: "newPassword" });
 
     const onSubmit = handleSubmit(({ currentPassword, newPassword }) => {
         setFeedback(null);
@@ -57,16 +54,11 @@ export const ChangePasswordContainer = () => {
                 registration: register("confirmPassword"),
                 error: errors.confirmPassword?.message,
             }}
-            newPasswordValue={newPasswordValue}
             feedback={feedback}
             isSubmitting={isSubmitting}
             isSubmitDisabled={!isValid}
-            submitLabel="Cập nhật mật khẩu"
+            submitLabel="Đổi mật khẩu"
             onSubmit={() => void onSubmit()}
-            onCancel={() => {
-                reset();
-                setFeedback(null);
-            }}
         />
     );
 };

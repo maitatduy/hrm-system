@@ -3,24 +3,27 @@
 ## 1. Thông tin chung
 
 - Dự án: HRM System.
-- Tính năng: trang đăng nhập, đứng độc lập, không nằm trong Master Layout vì người dùng chưa xác thực.
+- Tính năng: trang đăng nhập `/login`, đứng độc lập, không nằm trong Master Layout.
 - Mục đích: xác thực người dùng bằng email và mật khẩu trước khi vào hệ thống.
 
 ## 2. Đối tượng và trải nghiệm
 
 - Người dùng: mọi role.
-- Hành động chính: nhập email và mật khẩu, tuỳ chọn ghi nhớ đăng nhập, bấm đăng nhập, hoặc bấm link quên mật khẩu.
-- Cảm xúc mang lại: đơn giản, đáng tin cậy, thông báo lỗi rõ ràng nhưng không tiết lộ email nào tồn tại trong hệ thống.
+- Hành động chính: nhập email và mật khẩu, tuỳ chọn ghi nhớ, bấm đăng nhập, hoặc bấm quên mật khẩu.
+- Cảm xúc mang lại: tối giản, ít chữ, chỉ có những gì cần để đăng nhập.
 
 ## 3. Đặc tả thiết kế
 
-- Card đăng nhập căn giữa màn hình, nền canvas-soft phủ toàn trang phía sau.
-- Logo công ty phía trên form, tiêu đề ngắn gọn.
-- Input dùng rounded-xs theo DESIGN.md, nút đăng nhập primary, full chiều rộng card.
-- Lỗi sai email hoặc mật khẩu hiển thị chung một thông báo dưới form bằng accent-danger, không chỉ rõ sai ở trường nào để tránh dò tài khoản.
-- Link quên mật khẩu đặt ngay dưới ô mật khẩu.
+- Card căn giữa màn hình trên nền canvas-soft, chỉ có tiêu đề "Đăng nhập", không logo, không mô tả.
+- Hai ô Email và Mật khẩu, không placeholder, không dấu sao bắt buộc.
+- Một hàng gồm checkbox ghi nhớ và link "Quên mật khẩu?".
+- Nút "Đăng nhập" primary full chiều rộng, khi đang gửi chỉ hiện vòng quay.
+- Lỗi đăng nhập hiển thị một banner ngắn phía trên form, dùng nguyên message của backend, không chỉ rõ sai email hay mật khẩu.
+- Khi quay về từ luồng khác, hiện một banner thành công ngắn: "Đã đăng xuất", "Đã đặt lại mật khẩu", "Đã đổi mật khẩu, vui lòng đăng nhập lại".
 
 ## 4. Dữ liệu cốt lõi
 
-- Email, mật khẩu, checkbox ghi nhớ đăng nhập.
-- Sau khi đăng nhập thành công, điều hướng theo role, ví dụ ADMIN và HR vào dashboard quản trị, EMPLOYEE vào dashboard cá nhân.
+- Email, mật khẩu, ghi nhớ đăng nhập.
+- Ghi nhớ bật: access token lưu localStorage, giữ qua lần mở trình duyệt sau. Tắt: lưu sessionStorage, mất khi đóng trình duyệt.
+- Sau khi đăng nhập, về trang trong tham số `?redirect` nếu là đường dẫn nội bộ an toàn, nếu không thì về trang chủ theo vai trò.
+- Người đã đăng nhập vào `/login` sẽ được chuyển đi ngay.

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ERROR_MESSAGES } from "@/constants/messages";
 import { withApiError } from "@/lib/apiError";
 import { loginApi } from "../api";
 import { useAuthStore } from "../store";
@@ -8,7 +9,7 @@ import { CURRENT_USER_QUERY_KEY } from "./useCurrentUserQuery";
 
 const login = withApiError(
     ({ email, password }: LoginFormValues) => loginApi({ email, password }),
-    "Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại.",
+    ERROR_MESSAGES.SERVER_UNREACHABLE,
 );
 
 export const useLoginMutation = () => {

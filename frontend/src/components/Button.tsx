@@ -7,7 +7,6 @@ export type ButtonVariant = "primary" | "secondary" | "danger";
 export interface ButtonProps extends ComponentProps<"button"> {
     readonly variant?: ButtonVariant;
     readonly isLoading?: boolean;
-    readonly loadingText?: string;
 }
 
 const VARIANT_CLASS_NAMES: Record<ButtonVariant, string> = {
@@ -18,10 +17,10 @@ const VARIANT_CLASS_NAMES: Record<ButtonVariant, string> = {
     danger: "h-11 px-6 rounded-md text-[15px] font-semibold text-white bg-accent-danger shadow-sm hover:bg-accent-danger-hover active:bg-accent-danger-active focus-visible:ring-accent-danger/30 disabled:opacity-60",
 };
 
+/** Khi đang tải chỉ hiện vòng quay, giữ nguyên kích thước nút để giao diện không bị nhảy. */
 export const Button = ({
     variant = "primary",
     isLoading = false,
-    loadingText = "Đang xử lý...",
     type = "button",
     disabled,
     className,
@@ -33,19 +32,15 @@ export const Button = ({
         disabled={disabled || isLoading}
         aria-busy={isLoading}
         className={cn(
-            "flex items-center justify-center gap-2 select-none cursor-pointer transition-all active:scale-[0.99] outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:active:scale-100",
+            "relative flex items-center justify-center gap-2 select-none cursor-pointer transition-all active:scale-[0.99] outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:active:scale-100",
             VARIANT_CLASS_NAMES[variant],
             className,
         )}
         {...props}
     >
-        {isLoading ? (
-            <>
-                <Loader2 className="w-[18px] h-[18px] animate-spin" aria-hidden="true" />
-                <span>{loadingText}</span>
-            </>
-        ) : (
-            children
+        <span className={cn("flex items-center gap-2", isLoading && "invisible")}>{children}</span>
+        {isLoading && (
+            <Loader2 className="absolute w-[18px] h-[18px] animate-spin" aria-label="Đang xử lý" />
         )}
     </button>
 );

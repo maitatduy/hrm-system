@@ -2,7 +2,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import { AuthCard } from "@/components/AuthCard";
 import { AuthLayout } from "@/components/AuthLayout";
 import { AuthHeader } from "../components/AuthHeader";
-import { BackToLoginLink } from "../components/AuthLink";
 import { ResetPasswordContainer } from "../components/ResetPasswordContainer";
 import type { ResetPasswordLocationState } from "../types";
 
@@ -24,17 +23,8 @@ export const ResetPasswordPage = () => {
         <AuthLayout>
             <title>Đặt lại mật khẩu - HRM System</title>
             <AuthCard>
-                <AuthHeader
-                    title="Đặt lại mật khẩu"
-                    description={
-                        <>
-                            Tạo mật khẩu mới cho tài khoản{" "}
-                            <strong className="font-semibold text-ink">{state.email}</strong>
-                        </>
-                    }
-                />
+                <AuthHeader title="Đặt lại mật khẩu" />
                 <ResetPasswordContainer resetToken={state.resetToken} />
-                <BackToLoginLink />
             </AuthCard>
         </AuthLayout>
     );

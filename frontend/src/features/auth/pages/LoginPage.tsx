@@ -4,12 +4,13 @@ import { AuthLayout } from "@/components/AuthLayout";
 import { FormFeedbackBanner } from "@/components/FormFeedbackBanner";
 import { AuthHeader } from "../components/AuthHeader";
 import { LoginFormContainer } from "../components/LoginFormContainer";
+import { AUTH_MESSAGES } from "@/constants/messages";
 import type { LoginRedirectReason } from "../types";
 
 const REASON_MESSAGES: Record<LoginRedirectReason, string> = {
-    logged_out: "Bạn đã đăng xuất khỏi phiên làm việc thành công.",
-    password_reset: "Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.",
-    password_changed: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.",
+    logged_out: AUTH_MESSAGES.LOGGED_OUT,
+    password_reset: AUTH_MESSAGES.PASSWORD_RESET,
+    password_changed: AUTH_MESSAGES.PASSWORD_CHANGED,
 };
 
 const isLoginRedirectReason = (value: string | null): value is LoginRedirectReason =>

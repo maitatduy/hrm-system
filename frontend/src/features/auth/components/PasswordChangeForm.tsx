@@ -3,7 +3,6 @@ import { Button } from "@/components/Button";
 import { FormFeedbackBanner, type FormFeedback } from "@/components/FormFeedbackBanner";
 import { FormField } from "@/components/FormField";
 import { PasswordInput } from "@/components/PasswordInput";
-import { PasswordStrengthIndicator } from "./PasswordStrengthIndicator";
 
 interface PasswordFieldProps {
     readonly registration: UseFormRegisterReturn;
@@ -16,14 +15,11 @@ export interface PasswordChangeFormProps {
     readonly currentPassword?: PasswordFieldProps;
     readonly newPassword: PasswordFieldProps;
     readonly confirmPassword: PasswordFieldProps;
-    /** Giá trị đang nhập của mật khẩu mới, dùng để hiển thị các yêu cầu đã đạt. */
-    readonly newPasswordValue: string;
     readonly feedback: FormFeedback | null;
     readonly isSubmitting: boolean;
     readonly isSubmitDisabled: boolean;
     readonly submitLabel: string;
     readonly onSubmit: () => void;
-    readonly onCancel?: () => void;
 }
 
 export const PasswordChangeForm = ({
@@ -31,13 +27,11 @@ export const PasswordChangeForm = ({
     currentPassword,
     newPassword,
     confirmPassword,
-    newPasswordValue,
     feedback,
     isSubmitting,
     isSubmitDisabled,
     submitLabel,
     onSubmit,
-    onCancel,
 }: PasswordChangeFormProps) => (
     <form
         onSubmit={(event) => {
@@ -53,12 +47,10 @@ export const PasswordChangeForm = ({
             <FormField
                 id="current-password"
                 label="Mật khẩu hiện tại"
-                required
                 error={currentPassword.error}
             >
                 <PasswordInput
                     id="current-password"
-                    placeholder="Nhập mật khẩu bạn đang sử dụng"
                     autoComplete="current-password"
                     disabled={isSubmitting}
                     error={currentPassword.error}
@@ -67,31 +59,19 @@ export const PasswordChangeForm = ({
             </FormField>
         )}
 
-        <FormField id="new-password" label="Mật khẩu mới" required error={newPassword.error}>
+        <FormField id="new-password" label="Mật khẩu mới" error={newPassword.error}>
             <PasswordInput
                 id="new-password"
-                placeholder={
-                    mode === "change"
-                        ? "Nhập mật khẩu mới cần thay đổi"
-                        : "Nhập mật khẩu mới của bạn"
-                }
                 autoComplete="new-password"
                 disabled={isSubmitting}
                 error={newPassword.error}
                 {...newPassword.registration}
             />
-            <PasswordStrengthIndicator password={newPasswordValue} className="mt-1" />
         </FormField>
 
-        <FormField
-            id="confirm-password"
-            label="Xác nhận mật khẩu mới"
-            required
-            error={confirmPassword.error}
-        >
+        <FormField id="confirm-password" label="Nhập lại mật khẩu" error={confirmPassword.error}>
             <PasswordInput
                 id="confirm-password"
-                placeholder="Nhập lại mật khẩu mới"
                 autoComplete="new-password"
                 disabled={isSubmitting}
                 error={confirmPassword.error}
@@ -99,36 +79,13 @@ export const PasswordChangeForm = ({
             />
         </FormField>
 
-        {mode === "reset" ? (
-            <Button
-                type="submit"
-                className="w-full mt-2"
-                isLoading={isSubmitting}
-                disabled={isSubmitDisabled}
-            >
-                {submitLabel}
-            </Button>
-        ) : (
-            <div className="pt-4 border-t border-hairline flex items-center justify-end gap-3 w-full">
-                {onCancel && (
-                    <Button
-                        variant="secondary"
-                        className="h-10"
-                        onClick={onCancel}
-                        disabled={isSubmitting}
-                    >
-                        Hủy bỏ
-                    </Button>
-                )}
-                <Button
-                    type="submit"
-                    className="h-10 px-6"
-                    isLoading={isSubmitting}
-                    disabled={isSubmitDisabled}
-                >
-                    {submitLabel}
-                </Button>
-            </div>
-        )}
+        <Button
+            type="submit"
+            className={mode === "reset" ? "w-full mt-2" : "h-10 px-6 self-end mt-2"}
+            isLoading={isSubmitting}
+            disabled={isSubmitDisabled}
+        >
+            {submitLabel}
+        </Button>
     </form>
 );

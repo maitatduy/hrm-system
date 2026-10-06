@@ -1,22 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePasswordRequirements } from "./passwordRules";
+import { VALIDATION_MESSAGES } from "@/constants/messages";
+import { isStrongPassword } from "./passwordRules";
 import { changePasswordSchema, resetPasswordSchema } from "./schemas";
 
 const STRONG_PASSWORD = "Str0ng@Pass";
 
-describe("evaluatePasswordRequirements", () => {
-    it("marks every rule as met for a strong password", () => {
-        expect(evaluatePasswordRequirements(STRONG_PASSWORD).every((rule) => rule.isMet)).toBe(
-            true,
-        );
+describe("isStrongPassword", () => {
+    it("accepts a password meeting every rule", () => {
+        expect(isStrongPassword(STRONG_PASSWORD)).toBe(true);
     });
 
-    it("reports each missing rule for a weak password", () => {
-        const unmet = evaluatePasswordRequirements("abc")
-            .filter((rule) => !rule.isMet)
-            .map((rule) => rule.id);
-        expect(unmet).toEqual(["min-length", "has-uppercase", "has-number", "has-special"]);
-    });
+    it.each(["Sh0rt@", "str0ng@pass", "STR0NG@PASS", "Strong@Pass", "Str0ngPass"])(
+        "rejects %s because one rule is missing",
+        (password) => {
+            expect(isStrongPassword(password)).toBe(false);
+        },
+    );
 });
 
 describe("resetPasswordSchema", () => {
@@ -28,14 +27,12 @@ describe("resetPasswordSchema", () => {
         expect(result.success).toBe(true);
     });
 
-    it("reports the first unmet password rule", () => {
+    it("explains the password rules when the password is weak", () => {
         const result = resetPasswordSchema.safeParse({
             newPassword: "weakpass",
             confirmPassword: "weakpass",
         });
-        expect(result.error?.issues[0]?.message).toBe(
-            "Mật khẩu phải chứa ít nhất 1 chữ cái in hoa",
-        );
+        expect(result.error?.issues[0]?.message).toBe(VALIDATION_MESSAGES.PASSWORD_WEAK);
     });
 
     it("rejects mismatched confirmation", () => {
