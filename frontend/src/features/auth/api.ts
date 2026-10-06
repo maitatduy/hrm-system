@@ -1,6 +1,5 @@
-import { ERROR_MESSAGES } from "@/constants/messages";
 import { apiClient } from "@/lib/axios";
-import type { ApiResponse } from "@/lib/apiError";
+import { unwrapData, type ApiResponse } from "@/lib/apiError";
 import type {
     AuthUserSession,
     ChangePasswordRequest,
@@ -12,13 +11,6 @@ import type {
     VerifyOtpRequest,
     VerifyOtpResponse,
 } from "./types";
-
-const unwrapData = <T>(body: ApiResponse<T>): T => {
-    if (body.data === undefined || body.data === null) {
-        throw new Error(ERROR_MESSAGES.EMPTY_RESPONSE);
-    }
-    return body.data;
-};
 
 export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post<ApiResponse<LoginResponse>>("/api/auth/login", data);

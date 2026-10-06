@@ -1,3 +1,4 @@
+import { LayoutDashboard, Settings, type LucideIcon } from "lucide-react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { UserMenu } from "@/features/auth/components/UserMenu";
@@ -7,15 +8,17 @@ import { getHomePathByRole } from "@/features/auth/utils";
 interface NavItem {
     readonly label: string;
     readonly to: string;
+    readonly icon: LucideIcon;
 }
 
 // Chỉ liệt kê các mục đã có trang, module mới sẽ được thêm vào đây khi hoàn thành
 const buildNavItems = (homePath: string): readonly NavItem[] => [
-    { label: "Tổng quan", to: homePath },
-    { label: "Cài đặt", to: "/settings" },
+    { label: "Tổng quan", to: homePath, icon: LayoutDashboard },
+    { label: "Cài đặt", to: "/settings", icon: Settings },
 ];
 
-const NAV_ITEM_CLASS_NAME = "px-3 py-2 rounded-md text-[14px] transition-colors";
+const NAV_ITEM_CLASS_NAME =
+    "flex items-center gap-3 px-3 py-2 rounded-md text-[14px] transition-colors";
 
 /** Khung chung cho các trang sau đăng nhập. Chỉ dùng bên trong ProtectedRoute nên luôn có sessionUser. */
 export const DashboardLayout = () => {
@@ -53,6 +56,10 @@ export const DashboardLayout = () => {
                                     )
                                 }
                             >
+                                <item.icon
+                                    className="w-[18px] h-[18px] shrink-0"
+                                    aria-hidden="true"
+                                />
                                 {item.label}
                             </NavLink>
                         ))}

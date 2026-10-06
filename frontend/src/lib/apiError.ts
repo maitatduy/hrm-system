@@ -1,4 +1,5 @@
 import { isAxiosError } from "axios";
+import { ERROR_MESSAGES } from "@/constants/messages";
 
 /** Envelope chung mà mọi service backend trả về. */
 export interface ApiResponse<T> {
@@ -8,6 +9,14 @@ export interface ApiResponse<T> {
     readonly errors?: Record<string, string>;
     readonly timestamp: string;
 }
+
+/** Lấy phần data của envelope, báo lỗi khi backend trả về rỗng. */
+export const unwrapData = <T>(body: ApiResponse<T>): T => {
+    if (body.data === undefined || body.data === null) {
+        throw new Error(ERROR_MESSAGES.EMPTY_RESPONSE);
+    }
+    return body.data;
+};
 
 export type ApiMessageResponse = Pick<ApiResponse<never>, "status" | "message">;
 

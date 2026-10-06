@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from "@/features/auth/pages/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { OtpVerificationPage } from "@/features/auth/pages/OtpVerificationPage";
 import { ResetPasswordPage } from "@/features/auth/pages/ResetPasswordPage";
+import { DashboardPage as AdminDashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { DashboardLayout } from "./DashboardLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -31,10 +32,7 @@ export const AppRoutes = () => (
 
         <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
             <Route element={<DashboardLayout />}>
-                <Route
-                    path="/dashboard"
-                    element={<DashboardPage title="Tổng quan quản trị nhân sự" />}
-                />
+                <Route path="/dashboard" element={<AdminDashboardPage />} />
             </Route>
         </Route>
 

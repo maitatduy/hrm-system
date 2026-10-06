@@ -19,7 +19,7 @@ Nguồn: `.docs/ideas/00-master-layout-idea.md`, `.docs/frontend-plans/00-master
 - Phải: `UserMenu`, xem `02-logout-brief.md`.
 
 ### Sidebar
-- Nền `surface`, viền phải `hairline`. Danh sách `flex flex-col gap-1`, không icon.
+- Nền `surface`, viền phải `hairline`. Danh sách `flex flex-col gap-1`. Mỗi mục `flex items-center gap-3`, icon lucide 18px bên trái nhãn, cùng màu với chữ của mục (Tổng quan: `LayoutDashboard`, Cài đặt: `Settings`).
 - Mục: `px-3 py-2 rounded-md` chữ 14px.
   - Đang chọn: nền `primary` 10%, chữ `primary` đậm 600.
   - Thường: chữ `ink-secondary`, hover nền `canvas-soft`.

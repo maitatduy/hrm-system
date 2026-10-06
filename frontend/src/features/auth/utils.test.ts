@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getHomePathByRole, getInitialsFromEmail, getSafeRedirectPath, maskEmail } from "./utils";
+import { getHomePathByRole, getSafeRedirectPath, maskEmail } from "./utils";
 
 describe("getSafeRedirectPath", () => {
     it("accepts internal paths", () => {
@@ -36,15 +36,5 @@ describe("maskEmail", () => {
 
     it("returns input unchanged when it is not an email", () => {
         expect(maskEmail("not-an-email")).toBe("not-an-email");
-    });
-});
-
-describe("getInitialsFromEmail", () => {
-    it("uses the first two letters of the local part", () => {
-        expect(getInitialsFromEmail("admin@hrm.local")).toBe("AD");
-    });
-
-    it("falls back when email is missing", () => {
-        expect(getInitialsFromEmail(undefined)).toBe("NA");
     });
 });

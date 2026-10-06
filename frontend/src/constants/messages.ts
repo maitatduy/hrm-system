@@ -25,6 +25,26 @@ export const AUTH_MESSAGES = {
         `Phiên làm việc của ${email} sẽ kết thúc. Bạn sẽ cần đăng nhập lại để tiếp tục làm việc.`,
 } as const;
 
+/** Nhãn và thông báo của màn hình tổng quan. */
+export const DASHBOARD_MESSAGES = {
+    PAGE_TITLE: "Tổng quan",
+    METRIC_TOTAL_EMPLOYEES: "Tổng nhân viên",
+    METRIC_PRESENT_TODAY: "Đi làm hôm nay",
+    METRIC_ON_LEAVE_TODAY: "Đang nghỉ phép",
+    METRIC_OPEN_POSITIONS: "Vị trí đang tuyển",
+    ATTENDANCE_TREND_TITLE: "Tỷ lệ chuyên cần 6 tháng",
+    DEPARTMENT_DISTRIBUTION_TITLE: "Nhân viên theo phòng ban",
+    DEPARTMENT_DISTRIBUTION_UNIT: "nhân viên",
+    RECENT_ACTIVITIES_TITLE: "Hoạt động gần đây",
+    UPCOMING_EVENTS_TITLE: "Sự kiện sắp tới",
+    LOAD_FAILED: "Không tải được dữ liệu",
+    RETRY: "Thử lại",
+    EMPTY_CHART: "Chưa có dữ liệu",
+    EMPTY_ACTIVITIES: "Chưa có hoạt động nào",
+    EMPTY_EVENTS: "Không có sự kiện sắp tới",
+    ALL_DAY: "Cả ngày",
+} as const;
+
 /** Lỗi dự phòng khi backend không trả về message. */
 export const ERROR_MESSAGES = {
     SERVER_UNREACHABLE: "Không kết nối được máy chủ",

@@ -1,23 +1,6 @@
 import { cn } from "@/lib/cn";
 import type { AuthUserSession } from "../types";
-import { ROLE_LABELS, getInitialsFromEmail } from "../utils";
-
-export interface UserAvatarProps {
-    readonly email?: string;
-    readonly className?: string;
-}
-
-export const UserAvatar = ({ email, className }: UserAvatarProps) => (
-    <div
-        aria-hidden="true"
-        className={cn(
-            "w-10 h-10 shrink-0 rounded-full bg-avatar text-avatar-ink font-bold text-sm flex items-center justify-center",
-            className,
-        )}
-    >
-        {getInitialsFromEmail(email)}
-    </div>
-);
+import { ROLE_LABELS } from "../utils";
 
 export interface UserIdentityProps {
     readonly user: AuthUserSession | null;
