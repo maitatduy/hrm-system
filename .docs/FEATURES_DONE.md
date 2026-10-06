@@ -11,7 +11,7 @@
 - [x] **Màn hình Quên mật khẩu (Forgot Password)**: Hoàn thành ý tưởng (`03-forgot-password-idea.md`), frontend plan (`03-forgot-password-plan.md`), design brief (`03-forgot-password-brief.md`), bản vẽ Stitch và triển khai code (ForgotPasswordPage, ForgotPasswordFormContainer, ForgotPasswordForm, useForgotPasswordMutation).
 - [x] **Màn hình Xác thực mã OTP (OTP Verification)**: Hoàn thành ý tưởng (`04-otp-verification-idea.md`), frontend plan (`04-otp-verification-plan.md`), design brief (`04-otp-verification-brief.md`), bản vẽ Stitch và triển khai code (OtpVerificationPage, OtpVerificationFormContainer, OtpVerificationForm, OtpInputGroup, OtpResendSection, useOtpInput, useCountdown, useVerifyOtpMutation).
 - [x] **Màn hình Đổi & Đặt lại mật khẩu (Change / Reset Password)**: Hoàn thành ý tưởng (`05-change-password-idea.md`), frontend plan (`05-change-password-plan.md`), design brief (`05-change-password-brief.md`), bản vẽ Stitch và triển khai code (ResetPasswordPage, ResetPasswordContainer, ChangePasswordContainer, PasswordChangeForm, SettingsCard, useResetPasswordMutation, useChangePasswordMutation).
-- [ ] **Màn hình Tổng quan (Dashboard)**: Đã hoàn thành ý tưởng (`06-dashboard-idea.md`), frontend plan (`06-dashboard-plan.md`) và design brief (`06-dashboard-brief.md`) theo token màu trong code. Chưa có bản vẽ Stitch, chưa có API backend và chưa thi công code.
+- [x] **Màn hình Tổng quan (Dashboard)**: Hoàn thành ý tưởng (`06-dashboard-idea.md`), frontend plan (`06-dashboard-plan.md`), design brief (`06-dashboard-brief.md`) và triển khai code (DashboardPage, StatsOverviewContainer, AttendanceTrendContainer, DepartmentDistributionContainer, RecentActivitiesContainer, UpcomingEventsContainer, shared UI StatCard, TrendBadge, SectionCard, ChartLegend, Avatar, Skeleton, SectionErrorState, EmptyState, biểu đồ Recharts). Backend chưa có API thống kê, frontend dùng dữ liệu mẫu khi bật `VITE_USE_MOCK_API=true`.
 
 ### Backend & Microservices
 
@@ -40,3 +40,4 @@
 - **[2026-10-06 11:57]**: Triển khai gửi OTP qua email trong auth-service (không tách notification-service ở giai đoạn này), cấu hình SMTP qua biến môi trường, dev dùng Mailpit, cập nhật `00-auth-service-plan.md`.
 - **[2026-10-06 15:20]**: Hoàn thiện chức năng ghi nhớ đăng nhập ở cả backend và frontend, thêm biến `JWT_REFRESH_TOKEN_SESSION_EXPIRATION`.
 - **[2026-10-06 21:04]**: Hoàn thành frontend plan và design brief cho màn hình Tổng quan (Dashboard), brief dùng token màu trong `frontend/src/index.css` để đồng bộ với các màn đã code.
+- **[2026-10-06 22:34]**: Hoàn thành code màn hình Tổng quan (Dashboard) với thẻ thống kê, biểu đồ chuyên cần và phòng ban, hoạt động gần đây, sự kiện sắp tới, chạy bằng dữ liệu mẫu; thêm icon cho sidebar.
