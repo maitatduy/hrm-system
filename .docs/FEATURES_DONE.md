@@ -41,3 +41,4 @@
 - **[2026-10-06 15:20]**: Hoàn thiện chức năng ghi nhớ đăng nhập ở cả backend và frontend, thêm biến `JWT_REFRESH_TOKEN_SESSION_EXPIRATION`.
 - **[2026-10-06 21:04]**: Hoàn thành frontend plan và design brief cho màn hình Tổng quan (Dashboard), brief dùng token màu trong `frontend/src/index.css` để đồng bộ với các màn đã code.
 - **[2026-10-06 22:34]**: Hoàn thành code màn hình Tổng quan (Dashboard) với thẻ thống kê, biểu đồ chuyên cần và phòng ban, hoạt động gần đây, sự kiện sắp tới, chạy bằng dữ liệu mẫu; thêm icon cho sidebar.
+- **[2026-10-06 23:09]**: Sửa auth-service trả đúng 404 cho đường dẫn không tồn tại và 405 (kèm header Allow) cho method không hỗ trợ, thay vì 500.
