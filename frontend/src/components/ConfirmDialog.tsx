@@ -1,8 +1,21 @@
-import { useEffect } from "react";
-import { LogOut, AlertTriangle } from "lucide-react";
-import { SecondaryButton } from "./SecondaryButton";
-import { DangerButton } from "./DangerButton";
-import type { ConfirmDialogProps } from "@/features/auth/types";
+import { useEffect, type ReactNode } from "react";
+import { AlertTriangle, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { Button } from "./Button";
+
+export interface ConfirmDialogProps {
+    readonly isOpen: boolean;
+    readonly title: string;
+    readonly description: string;
+    readonly confirmLabel?: string;
+    readonly cancelLabel?: string;
+    readonly isLoading?: boolean;
+    readonly variant?: "danger" | "primary";
+    readonly icon?: LucideIcon;
+    readonly onConfirm: () => void;
+    readonly onCancel: () => void;
+    readonly children?: ReactNode;
+}
 
 export const ConfirmDialog = ({
     isOpen,
@@ -12,73 +25,67 @@ export const ConfirmDialog = ({
     cancelLabel = "Hủy bỏ",
     isLoading = false,
     variant = "danger",
+    icon: Icon = AlertTriangle,
     onConfirm,
     onCancel,
     children,
 }: ConfirmDialogProps) => {
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape" && isOpen && !isLoading) {
-                onCancel();
-            }
-        };
+        if (!isOpen) return;
 
-        if (isOpen) {
-            window.addEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = "hidden";
-        }
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape" && !isLoading) onCancel();
+        };
+        const previousOverflow = document.body.style.overflow;
+
+        window.addEventListener("keydown", handleKeyDown);
+        document.body.style.overflow = "hidden";
 
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = "unset";
+            document.body.style.overflow = previousOverflow;
         };
     }, [isOpen, isLoading, onCancel]);
 
     if (!isOpen) return null;
 
+    const isDanger = variant === "danger";
+
     return (
         <div
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 transition-opacity duration-200"
-            onClick={(e) => {
-                if (e.target === e.currentTarget && !isLoading) {
-                    onCancel();
-                }
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={(event) => {
+                if (event.target === event.currentTarget && !isLoading) onCancel();
             }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
             aria-describedby="confirm-dialog-description"
         >
-            <div
-                className="relative z-10 bg-[#ffffff] w-full max-w-[480px] rounded-lg border border-[#e6e6e6] shadow-[0_16px_36px_rgba(0,0,0,0.14)] p-8 transform transition-all duration-200 scale-100"
-                onClick={(e) => e.stopPropagation()}
-            >
+            <div className="w-full max-w-[480px] bg-surface rounded-lg border border-hairline shadow-[0_16px_36px_rgba(0,0,0,0.14)] p-8">
                 <div className="flex justify-center">
                     <div
-                        className={`w-14 h-14 rounded-full flex items-center justify-center ring-8 ${
-                            variant === "danger"
-                                ? "bg-[#dc2626]/10 text-[#dc2626] ring-[#dc2626]/5"
-                                : "bg-[#0075de]/10 text-[#0075de] ring-[#0075de]/5"
-                        }`}
-                    >
-                        {variant === "danger" ? (
-                            <LogOut className="w-7 h-7 stroke-[2.2]" />
-                        ) : (
-                            <AlertTriangle className="w-7 h-7 stroke-[2.2]" />
+                        className={cn(
+                            "w-14 h-14 rounded-full flex items-center justify-center ring-8",
+                            isDanger
+                                ? "bg-accent-danger/10 text-accent-danger ring-accent-danger/5"
+                                : "bg-primary/10 text-primary ring-primary/5",
                         )}
+                    >
+                        <Icon className="w-7 h-7 stroke-[2.2]" aria-hidden="true" />
                     </div>
                 </div>
 
                 <h2
                     id="confirm-dialog-title"
-                    className="text-[24px] font-bold text-center text-[#000000] mt-5 tracking-tight leading-tight"
+                    className="text-[24px] font-bold text-center text-ink mt-5 tracking-tight leading-tight"
                 >
                     {title}
                 </h2>
 
                 <p
                     id="confirm-dialog-description"
-                    className="text-[16px] font-normal text-[#615d59] text-center leading-relaxed mt-3 mb-6"
+                    className="text-[16px] text-ink-muted text-center leading-relaxed mt-3 mb-6"
                 >
                     {description}
                 </p>
@@ -86,25 +93,20 @@ export const ConfirmDialog = ({
                 {children}
 
                 <div className="flex items-center justify-end gap-3.5 pt-3">
-                    <SecondaryButton
-                        onClick={onCancel}
-                        disabled={isLoading}
-                    >
+                    <Button variant="secondary" onClick={onCancel} disabled={isLoading}>
                         {cancelLabel}
-                    </SecondaryButton>
-
-                    <DangerButton
+                    </Button>
+                    <Button
+                        variant={isDanger ? "danger" : "primary"}
                         onClick={onConfirm}
                         isLoading={isLoading}
-                        disabled={isLoading}
+                        className={isDanger ? undefined : "h-11 rounded-md"}
                     >
-                        <LogOut className="w-4.5 h-4.5" />
-                        <span>{isLoading ? "Đang xử lý..." : confirmLabel}</span>
-                    </DangerButton>
+                        <Icon className="w-4.5 h-4.5" aria-hidden="true" />
+                        <span>{confirmLabel}</span>
+                    </Button>
                 </div>
             </div>
         </div>
     );
 };
-
-export default ConfirmDialog;

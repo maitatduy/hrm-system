@@ -2,19 +2,14 @@ import { apiClient } from "@/lib/axios";
 import type { ApiResponse } from "@/lib/apiError";
 import type {
     AuthUserSession,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
-    LogoutResponse,
-    ForgotPasswordRequest,
-    ForgotPasswordResponse,
+    MessageResponse,
+    ResetPasswordRequest,
     VerifyOtpRequest,
     VerifyOtpResponse,
-    ResendOtpRequest,
-    ResendOtpResponse,
-    ResetPasswordRequest,
-    ResetPasswordResponse,
-    ChangePasswordRequest,
-    ChangePasswordResponse,
 } from "./types";
 
 const unwrapData = <T>(body: ApiResponse<T>): T => {
@@ -29,7 +24,7 @@ export const loginApi = async (data: LoginRequest): Promise<LoginResponse> => {
     return unwrapData(response.data);
 };
 
-export const logoutApi = async (): Promise<LogoutResponse> => {
+export const logoutApi = async (): Promise<MessageResponse> => {
     const response = await apiClient.post<ApiResponse<null>>("/api/auth/logout");
     return response.data;
 };
@@ -39,9 +34,8 @@ export const getCurrentUserApi = async (): Promise<AuthUserSession> => {
     return unwrapData(response.data);
 };
 
-export const forgotPasswordApi = async (
-    data: ForgotPasswordRequest,
-): Promise<ForgotPasswordResponse> => {
+/** Gửi OTP lần đầu và cả khi gửi lại, backend giới hạn 60 giây giữa hai lần gửi. */
+export const forgotPasswordApi = async (data: ForgotPasswordRequest): Promise<MessageResponse> => {
     const response = await apiClient.post<ApiResponse<null>>("/api/auth/forgot-password", data);
     return response.data;
 };
@@ -54,20 +48,12 @@ export const verifyOtpApi = async (data: VerifyOtpRequest): Promise<VerifyOtpRes
     return unwrapData(response.data);
 };
 
-// Backend không có endpoint resend riêng: gửi lại OTP chính là gọi lại forgot-password (có cooldown 60 giây)
-export const resendOtpApi = async (data: ResendOtpRequest): Promise<ResendOtpResponse> =>
-    forgotPasswordApi(data);
-
-export const resetPasswordApi = async (
-    data: ResetPasswordRequest,
-): Promise<ResetPasswordResponse> => {
+export const resetPasswordApi = async (data: ResetPasswordRequest): Promise<MessageResponse> => {
     const response = await apiClient.post<ApiResponse<null>>("/api/auth/reset-password", data);
     return response.data;
 };
 
-export const changePasswordApi = async (
-    data: ChangePasswordRequest,
-): Promise<ChangePasswordResponse> => {
+export const changePasswordApi = async (data: ChangePasswordRequest): Promise<MessageResponse> => {
     const response = await apiClient.put<ApiResponse<null>>("/api/auth/change-password", data);
     return response.data;
 };

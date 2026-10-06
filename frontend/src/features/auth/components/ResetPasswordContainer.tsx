@@ -1,88 +1,52 @@
-import { useState, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
-import { resetPasswordSchema, evaluatePasswordRequirements } from "../schemas";
-import type { ResetPasswordFormData } from "../schemas";
-import { useResetPasswordMutation } from "../hooks/useResetPasswordMutation";
-import { PasswordChangeForm } from "@/components/PasswordChangeForm";
-import type { ResetPasswordContainerProps, PasswordFormFeedback } from "../types";
+import type { FormFeedback } from "@/components/FormFeedbackBanner";
+import { resetPasswordSchema, type ResetPasswordFormValues } from "../schemas";
+import { useResetPasswordMutation } from "../hooks/usePasswordMutations";
+import { useDelayedNavigate } from "../hooks/useDelayedNavigate";
+import type { LoginRedirectReason } from "../types";
+import { PasswordChangeForm } from "./PasswordChangeForm";
 
-export const ResetPasswordContainer = ({
-    resetToken,
-    onSuccessRedirect,
-}: ResetPasswordContainerProps) => {
-    const navigate = useNavigate();
-    const [feedback, setFeedback] = useState<PasswordFormFeedback | null>(null);
+const REDIRECT_DELAY_MS = 1500;
+const REDIRECT_REASON: LoginRedirectReason = "password_reset";
+
+export interface ResetPasswordContainerProps {
+    readonly resetToken: string;
+}
+
+export const ResetPasswordContainer = ({ resetToken }: ResetPasswordContainerProps) => {
+    const [feedback, setFeedback] = useState<FormFeedback | null>(null);
+    const resetPasswordMutation = useResetPasswordMutation();
+    const navigateLater = useDelayedNavigate(REDIRECT_DELAY_MS);
 
     const {
         register,
         handleSubmit,
-        watch,
-        formState: { errors },
-    } = useForm<ResetPasswordFormData>({
+        control,
+        formState: { errors, isValid },
+    } = useForm<ResetPasswordFormValues>({
         resolver: zodResolver(resetPasswordSchema),
         mode: "onChange",
-        defaultValues: {
-            newPassword: "",
-            confirmPassword: "",
-        },
+        defaultValues: { newPassword: "", confirmPassword: "" },
     });
+    const newPasswordValue = useWatch({ control, name: "newPassword" });
+    const isDone = resetPasswordMutation.isSuccess;
 
-    const resetPasswordMutation = useResetPasswordMutation();
-
-    const watchedNewPassword = watch("newPassword") || "";
-    const watchedConfirmPassword = watch("confirmPassword") || "";
-
-    const requirements = useMemo(
-        () => evaluatePasswordRequirements(watchedNewPassword),
-        [watchedNewPassword],
-    );
-
-    const allRequirementsMet = requirements.every((r) => r.isMet);
-    const passwordsMatch =
-        watchedNewPassword.length > 0 &&
-        watchedConfirmPassword.length > 0 &&
-        watchedNewPassword === watchedConfirmPassword;
-
-    const isSubmitDisabled =
-        !watchedNewPassword ||
-        !watchedConfirmPassword ||
-        !passwordsMatch ||
-        !allRequirementsMet ||
-        resetPasswordMutation.isPending;
-
-    const onSubmit = handleSubmit((data) => {
+    const onSubmit = handleSubmit(({ newPassword }) => {
         setFeedback(null);
         resetPasswordMutation.mutate(
+            { resetToken, newPassword },
             {
-                resetToken,
-                newPassword: data.newPassword,
-            },
-            {
-                onSuccess: (res) => {
+                onSuccess: () => {
                     setFeedback({
                         type: "success",
                         message:
-                            res.message ||
                             "Đặt lại mật khẩu thành công. Đang chuyển hướng về trang đăng nhập...",
                     });
-                    setTimeout(() => {
-                        if (onSuccessRedirect) {
-                            onSuccessRedirect("/login?reset=success");
-                        } else {
-                            navigate("/login?reset=success");
-                        }
-                    }, 1500);
+                    navigateLater(`/login?reason=${REDIRECT_REASON}`, { replace: true });
                 },
-                onError: (err) => {
-                    setFeedback({
-                        type: "error",
-                        message:
-                            err.message ||
-                            "Phiên đặt lại mật khẩu đã hết hạn hoặc không hợp lệ. Vui lòng gửi lại yêu cầu OTP.",
-                    });
-                },
+                onError: (error) => setFeedback({ type: "error", message: error.message }),
             },
         );
     });
@@ -90,15 +54,20 @@ export const ResetPasswordContainer = ({
     return (
         <PasswordChangeForm
             mode="reset"
-            registerNewPassword={register("newPassword")}
-            registerConfirmPassword={register("confirmPassword")}
-            newPasswordError={errors.newPassword?.message}
-            confirmPasswordError={errors.confirmPassword?.message}
-            isSubmitDisabled={isSubmitDisabled}
-            isSubmitting={resetPasswordMutation.isPending}
+            newPassword={{
+                registration: register("newPassword"),
+                error: errors.newPassword?.message,
+            }}
+            confirmPassword={{
+                registration: register("confirmPassword"),
+                error: errors.confirmPassword?.message,
+            }}
+            newPasswordValue={newPasswordValue}
             feedback={feedback}
-            onSubmit={onSubmit}
-            submitButtonText="Lưu mật khẩu mới"
+            isSubmitting={resetPasswordMutation.isPending || isDone}
+            isSubmitDisabled={!isValid}
+            submitLabel="Lưu mật khẩu mới"
+            onSubmit={() => void onSubmit()}
         />
     );
 };

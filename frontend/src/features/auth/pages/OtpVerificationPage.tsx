@@ -1,9 +1,9 @@
-import { useSearchParams, Navigate } from "react-router-dom";
-import { AuthLayout } from "@/components/AuthLayout";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { AuthCard } from "@/components/AuthCard";
+import { AuthLayout } from "@/components/AuthLayout";
 import { AuthHeader } from "../components/AuthHeader";
-import { MaskedEmailNotice } from "../components/MaskedEmailNotice";
 import { OtpVerificationFormContainer } from "../components/OtpVerificationFormContainer";
+import { maskEmail } from "../utils";
 
 export const OtpVerificationPage = () => {
     const [searchParams] = useSearchParams();
@@ -15,13 +15,19 @@ export const OtpVerificationPage = () => {
 
     return (
         <AuthLayout>
+            <title>Xác thực mã OTP - HRM System</title>
             <AuthCard>
-                <AuthHeader title="Xác thực mã OTP" />
-                <MaskedEmailNotice email={email} />
+                <AuthHeader
+                    title="Xác thực mã OTP"
+                    description={
+                        <>
+                            Mã xác thực 6 chữ số đã được gửi tới hòm thư{" "}
+                            <strong className="font-semibold text-ink">{maskEmail(email)}</strong>
+                        </>
+                    }
+                />
                 <OtpVerificationFormContainer email={email} />
             </AuthCard>
         </AuthLayout>
     );
 };
-
-export default OtpVerificationPage;

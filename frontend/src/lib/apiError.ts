@@ -26,3 +26,17 @@ export const getApiErrorMessage = (error: unknown, fallback: string): string => 
 
 export const toApiError = (error: unknown, fallback: string): Error =>
     new Error(getApiErrorMessage(error, fallback));
+
+/** Bọc hàm gọi API để mọi lỗi được chuyển thành Error mang message sẵn sàng hiển thị cho người dùng. */
+export const withApiError =
+    <TArgs extends unknown[], TResult>(
+        request: (...args: TArgs) => Promise<TResult>,
+        fallback: string,
+    ) =>
+    async (...args: TArgs): Promise<TResult> => {
+        try {
+            return await request(...args);
+        } catch (error) {
+            throw toApiError(error, fallback);
+        }
+    };

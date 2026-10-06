@@ -1,114 +1,72 @@
-import { useState, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { changePasswordSchema, evaluatePasswordRequirements } from "../schemas";
-import type { ChangePasswordFormData } from "../schemas";
-import { useChangePasswordMutation } from "../hooks/useChangePasswordMutation";
-import { PasswordChangeForm } from "@/components/PasswordChangeForm";
-import type { ChangePasswordContainerProps, PasswordFormFeedback } from "../types";
+import type { FormFeedback } from "@/components/FormFeedbackBanner";
+import { changePasswordSchema, type ChangePasswordFormValues } from "../schemas";
+import { useChangePasswordMutation } from "../hooks/usePasswordMutations";
+import { useLogoutMutation } from "../hooks/useLogoutMutation";
+import { PasswordChangeForm } from "./PasswordChangeForm";
 
-export const ChangePasswordContainer = ({
-    onSuccess,
-    onCancel,
-}: ChangePasswordContainerProps) => {
-    const [feedback, setFeedback] = useState<PasswordFormFeedback | null>(null);
+/**
+ * Backend thu hồi mọi refresh token sau khi đổi mật khẩu, nên phiên hiện tại sẽ hết hạn sớm.
+ * Vì vậy đăng xuất ngay và yêu cầu đăng nhập lại bằng mật khẩu mới thay vì để phiên tự rơi.
+ */
+export const ChangePasswordContainer = () => {
+    const [feedback, setFeedback] = useState<FormFeedback | null>(null);
+    const changePasswordMutation = useChangePasswordMutation();
+    const logoutMutation = useLogoutMutation("password_changed");
 
     const {
         register,
         handleSubmit,
-        watch,
+        control,
         reset,
-        formState: { errors },
-    } = useForm<ChangePasswordFormData>({
+        formState: { errors, isValid },
+    } = useForm<ChangePasswordFormValues>({
         resolver: zodResolver(changePasswordSchema),
         mode: "onChange",
-        defaultValues: {
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-        },
+        defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
     });
+    const newPasswordValue = useWatch({ control, name: "newPassword" });
 
-    const changePasswordMutation = useChangePasswordMutation();
-
-    const watchedCurrentPassword = watch("currentPassword") || "";
-    const watchedNewPassword = watch("newPassword") || "";
-    const watchedConfirmPassword = watch("confirmPassword") || "";
-
-    const requirements = useMemo(
-        () => evaluatePasswordRequirements(watchedNewPassword),
-        [watchedNewPassword],
-    );
-
-    const allRequirementsMet = requirements.every((r) => r.isMet);
-    const passwordsMatch =
-        watchedNewPassword.length > 0 &&
-        watchedConfirmPassword.length > 0 &&
-        watchedNewPassword === watchedConfirmPassword;
-    const hasCurrentPassword = watchedCurrentPassword.trim().length > 0;
-    const isDifferentFromCurrent =
-        watchedCurrentPassword.length > 0 &&
-        watchedNewPassword.length > 0 &&
-        watchedCurrentPassword !== watchedNewPassword;
-
-    const isSubmitDisabled =
-        !hasCurrentPassword ||
-        !allRequirementsMet ||
-        !passwordsMatch ||
-        !isDifferentFromCurrent ||
-        changePasswordMutation.isPending;
-
-    const onSubmit = handleSubmit((data) => {
+    const onSubmit = handleSubmit(({ currentPassword, newPassword }) => {
         setFeedback(null);
         changePasswordMutation.mutate(
+            { currentPassword, newPassword },
             {
-                currentPassword: data.currentPassword,
-                newPassword: data.newPassword,
-            },
-            {
-                onSuccess: (res) => {
-                    reset();
-                    setFeedback({
-                        type: "success",
-                        message:
-                            res.message ||
-                            "Đổi mật khẩu thành công. Thông tin bảo mật của bạn đã được cập nhật.",
-                    });
-                    onSuccess?.();
-                },
-                onError: (err) => {
-                    setFeedback({
-                        type: "error",
-                        message:
-                            err.message ||
-                            "Mật khẩu hiện tại không chính xác hoặc không hợp lệ. Vui lòng thử lại.",
-                    });
-                },
+                onSuccess: () => logoutMutation.mutate(),
+                onError: (error) => setFeedback({ type: "error", message: error.message }),
             },
         );
     });
 
-    const handleCancel = () => {
-        reset();
-        setFeedback(null);
-        onCancel?.();
-    };
+    const isSubmitting = changePasswordMutation.isPending || logoutMutation.isPending;
 
     return (
         <PasswordChangeForm
             mode="change"
-            registerCurrentPassword={register("currentPassword")}
-            registerNewPassword={register("newPassword")}
-            registerConfirmPassword={register("confirmPassword")}
-            currentPasswordError={errors.currentPassword?.message}
-            newPasswordError={errors.newPassword?.message}
-            confirmPasswordError={errors.confirmPassword?.message}
-            isSubmitDisabled={isSubmitDisabled}
-            isSubmitting={changePasswordMutation.isPending}
+            currentPassword={{
+                registration: register("currentPassword"),
+                error: errors.currentPassword?.message,
+            }}
+            newPassword={{
+                registration: register("newPassword"),
+                error: errors.newPassword?.message,
+            }}
+            confirmPassword={{
+                registration: register("confirmPassword"),
+                error: errors.confirmPassword?.message,
+            }}
+            newPasswordValue={newPasswordValue}
             feedback={feedback}
-            onSubmit={onSubmit}
-            onCancel={handleCancel}
-            submitButtonText="Cập nhật mật khẩu"
+            isSubmitting={isSubmitting}
+            isSubmitDisabled={!isValid}
+            submitLabel="Cập nhật mật khẩu"
+            onSubmit={() => void onSubmit()}
+            onCancel={() => {
+                reset();
+                setFeedback(null);
+            }}
         />
     );
 };

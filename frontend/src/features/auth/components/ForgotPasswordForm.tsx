@@ -1,60 +1,62 @@
-import { FormFeedbackBanner } from "@/components/FormFeedbackBanner";
+import type { FieldErrors, UseFormRegister } from "react-hook-form";
+import { Button } from "@/components/Button";
+import { FormFeedbackBanner, type FormFeedback } from "@/components/FormFeedbackBanner";
 import { FormField } from "@/components/FormField";
 import { TextInput } from "@/components/TextInput";
-import { SubmitButton } from "@/components/SubmitButton";
-import { BackToLoginLink } from "./BackToLoginLink";
-import type { ForgotPasswordFormProps } from "../types";
+import type { ForgotPasswordFormValues } from "../schemas";
+import { BackToLoginLink } from "./AuthLink";
+
+export interface ForgotPasswordFormProps {
+    readonly register: UseFormRegister<ForgotPasswordFormValues>;
+    readonly errors: FieldErrors<ForgotPasswordFormValues>;
+    readonly feedback: FormFeedback | null;
+    readonly isSubmitting: boolean;
+    /** Đã gửi mã thành công và đang chờ chuyển sang bước nhập OTP. */
+    readonly isRedirecting: boolean;
+    readonly onSubmit: () => void;
+    readonly onClearFeedback: () => void;
+}
 
 export const ForgotPasswordForm = ({
     register,
     errors,
     feedback,
     isSubmitting,
+    isRedirecting,
     onSubmit,
     onClearFeedback,
-}: ForgotPasswordFormProps) => {
-    return (
-        <form
-            id="forgotPasswordForm"
-            onSubmit={(e) => {
-                e.preventDefault();
-                onSubmit();
-            }}
-            className="w-full flex flex-col gap-5"
-            noValidate
-        >
-            {feedback && (
-                <FormFeedbackBanner
-                    type={feedback.type}
-                    message={feedback.message}
-                    onClose={onClearFeedback}
-                />
-            )}
+}: ForgotPasswordFormProps) => (
+    <form
+        onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+        }}
+        className="w-full flex flex-col gap-5"
+        noValidate
+    >
+        <FormFeedbackBanner feedback={feedback} onClose={onClearFeedback} />
 
-            <FormField
-                id="email"
-                label="Email công việc"
+        <FormField id="forgot-email" label="Email công việc" error={errors.email?.message} required>
+            <TextInput
+                id="forgot-email"
+                type="email"
+                placeholder="nguyenvana@hrm.com"
+                autoComplete="email"
+                disabled={isSubmitting || isRedirecting}
                 error={errors.email?.message}
-                required
-            >
-                <TextInput
-                    id="email"
-                    type="email"
-                    placeholder="nguyenvana@hrm.com"
-                    autoComplete="email"
-                    disabled={isSubmitting}
-                    error={errors.email?.message}
-                    registration={register("email")}
-                />
-            </FormField>
+                {...register("email")}
+            />
+        </FormField>
 
-            <SubmitButton isLoading={isSubmitting} loadingText="Đang gửi mã...">
-                <span>Gửi mã xác thực</span>
-            </SubmitButton>
+        <Button
+            type="submit"
+            className="w-full"
+            isLoading={isSubmitting || isRedirecting}
+            loadingText={isRedirecting ? "Đang chuyển sang bước xác thực..." : "Đang gửi mã..."}
+        >
+            Gửi mã xác thực
+        </Button>
 
-            <div className="text-center pt-1">
-                <BackToLoginLink disabled={isSubmitting} />
-            </div>
-        </form>
-    );
-};
+        <BackToLoginLink disabled={isSubmitting || isRedirecting} />
+    </form>
+);

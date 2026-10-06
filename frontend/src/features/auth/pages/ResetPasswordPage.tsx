@@ -1,34 +1,41 @@
-import { useSearchParams, Navigate } from "react-router-dom";
-import { AuthLayout } from "@/components/AuthLayout";
+import { Navigate, useLocation } from "react-router-dom";
 import { AuthCard } from "@/components/AuthCard";
+import { AuthLayout } from "@/components/AuthLayout";
 import { AuthHeader } from "../components/AuthHeader";
+import { BackToLoginLink } from "../components/AuthLink";
 import { ResetPasswordContainer } from "../components/ResetPasswordContainer";
-import { BackToLoginLink } from "../components/BackToLoginLink";
+import type { ResetPasswordLocationState } from "../types";
 
+const isResetPasswordState = (state: unknown): state is ResetPasswordLocationState =>
+    typeof state === "object" &&
+    state !== null &&
+    typeof (state as ResetPasswordLocationState).email === "string" &&
+    typeof (state as ResetPasswordLocationState).resetToken === "string";
+
+/** Chỉ vào được từ bước xác thực OTP, reset token nằm trong history state chứ không trên URL. */
 export const ResetPasswordPage = () => {
-    const [searchParams] = useSearchParams();
-    const email = searchParams.get("email");
-    const token = searchParams.get("token");
+    const { state } = useLocation();
 
-    if (!email) {
+    if (!isResetPasswordState(state)) {
         return <Navigate to="/forgot-password" replace />;
-    }
-
-    if (!token) {
-        return <Navigate to={`/verify-otp?email=${encodeURIComponent(email)}`} replace />;
     }
 
     return (
         <AuthLayout>
+            <title>Đặt lại mật khẩu - HRM System</title>
             <AuthCard>
-                <AuthHeader title="Đặt lại mật khẩu" />
-                <ResetPasswordContainer resetToken={token} />
-                <div className="pt-2 text-center">
-                    <BackToLoginLink to="/login" label="Quay lại trang đăng nhập" />
-                </div>
+                <AuthHeader
+                    title="Đặt lại mật khẩu"
+                    description={
+                        <>
+                            Tạo mật khẩu mới cho tài khoản{" "}
+                            <strong className="font-semibold text-ink">{state.email}</strong>
+                        </>
+                    }
+                />
+                <ResetPasswordContainer resetToken={state.resetToken} />
+                <BackToLoginLink />
             </AuthCard>
         </AuthLayout>
     );
 };
-
-export default ResetPasswordPage;

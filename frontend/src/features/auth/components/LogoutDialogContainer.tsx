@@ -1,7 +1,8 @@
+import { LogOut } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuthStore } from "../store";
 import { useLogoutMutation } from "../hooks/useLogoutMutation";
-import { ROLE_LABELS, getInitialsFromEmail } from "../roles";
+import { UserAvatar, UserIdentity } from "./UserAvatar";
 
 export interface LogoutDialogContainerProps {
     readonly isOpen: boolean;
@@ -10,7 +11,7 @@ export interface LogoutDialogContainerProps {
 
 export const LogoutDialogContainer = ({ isOpen, onClose }: LogoutDialogContainerProps) => {
     const sessionUser = useAuthStore((state) => state.sessionUser);
-    const logoutMutation = useLogoutMutation(onClose);
+    const logoutMutation = useLogoutMutation("logged_out");
 
     return (
         <ConfirmDialog
@@ -18,29 +19,16 @@ export const LogoutDialogContainer = ({ isOpen, onClose }: LogoutDialogContainer
             title="Xác nhận đăng xuất"
             description="Bạn có chắc chắn muốn kết thúc phiên làm việc? Mọi tác vụ chưa lưu sẽ bị gián đoạn và bạn cần đăng nhập lại để tiếp tục."
             confirmLabel="Đăng xuất"
-            cancelLabel="Hủy bỏ"
             variant="danger"
+            icon={LogOut}
             isLoading={logoutMutation.isPending}
-            onConfirm={() => {
-                logoutMutation.mutate();
-            }}
+            onConfirm={() => logoutMutation.mutate()}
             onCancel={onClose}
         >
-            <div className="bg-[#f9f2ed] border border-[#e6e6e6] rounded-md p-4 mb-6 flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-full bg-[#d5e3ff] flex items-center justify-center text-[#005db2] font-bold text-sm shrink-0">
-                    {getInitialsFromEmail(sessionUser?.email)}
-                </div>
-                <div className="flex flex-col text-left overflow-hidden">
-                    <span className="text-[15px] text-[#000000] font-semibold truncate">
-                        {sessionUser?.email}
-                    </span>
-                    <span className="text-[13px] text-[#615d59] truncate mt-0.5">
-                        {sessionUser ? ROLE_LABELS[sessionUser.role] : ""}
-                    </span>
-                </div>
+            <div className="bg-canvas-warm border border-hairline rounded-md p-4 mb-6 flex items-center gap-3.5">
+                <UserAvatar email={sessionUser?.email} className="w-11 h-11" />
+                <UserIdentity user={sessionUser} />
             </div>
         </ConfirmDialog>
     );
 };
-
-export default LogoutDialogContainer;

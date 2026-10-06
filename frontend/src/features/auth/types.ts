@@ -1,23 +1,10 @@
-import type { ReactNode } from "react";
-import type { UseFormRegister, UseFormRegisterReturn, FieldErrors } from "react-hook-form";
 import type { ApiMessageResponse } from "@/lib/apiError";
 
 export type UserRole = "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE";
 
 export type UserStatus = "ACTIVE" | "LOCKED";
 
-export interface LoginFormData {
-    email: string;
-    password: string;
-    rememberMe: boolean;
-}
-
-export interface LoginRequest {
-    readonly email: string;
-    readonly password: string;
-}
-
-/** Khớp với UserSummaryResponse của auth-service. */
+/** Khớp với UserSummaryResponse của auth-service. Thời gian là UTC. */
 export interface AuthUserSession {
     readonly id: string;
     readonly email: string;
@@ -27,151 +14,19 @@ export interface AuthUserSession {
     readonly lastLoginAt: string | null;
 }
 
+export interface LoginRequest {
+    readonly email: string;
+    readonly password: string;
+}
+
 export interface LoginResponse {
     readonly accessToken: string;
     readonly tokenType: "Bearer";
     readonly user: AuthUserSession;
 }
 
-export interface AuthLayoutProps {
-    readonly children: ReactNode;
-    readonly className?: string;
-}
-
-export interface AuthCardProps {
-    readonly children: ReactNode;
-    readonly className?: string;
-}
-
-export interface FormErrorMessageBannerProps {
-    readonly message: string | null;
-    readonly onClose?: () => void;
-}
-
-export interface TextInputProps {
-    readonly id: string;
-    readonly label: string;
-    readonly type?: "text" | "email";
-    readonly placeholder?: string;
-    readonly error?: string;
-    readonly disabled?: boolean;
-    readonly registration: ReturnType<UseFormRegister<LoginFormData>>;
-}
-
-export interface PasswordInputProps {
-    readonly id: string;
-    readonly label: string;
-    readonly placeholder?: string;
-    readonly error?: string;
-    readonly disabled?: boolean;
-    readonly registration: ReturnType<UseFormRegister<LoginFormData>>;
-}
-
-export interface RememberMeCheckboxProps {
-    readonly id: string;
-    readonly label: string;
-    readonly disabled?: boolean;
-    readonly registration: ReturnType<UseFormRegister<LoginFormData>>;
-}
-
-export interface SubmitButtonProps {
-    readonly children: ReactNode;
-    readonly isLoading: boolean;
-    readonly disabled?: boolean;
-    readonly className?: string;
-    readonly onClick?: () => void;
-}
-
-export interface LoginFormProps {
-    readonly register: UseFormRegister<LoginFormData>;
-    readonly errors: FieldErrors<LoginFormData>;
-    readonly serverError: string | null;
-    readonly isSubmitting: boolean;
-    readonly onSubmit: () => void;
-}
-
-export interface AuthState {
-    readonly accessToken: string | null;
-    readonly isAuthenticated: boolean;
-    readonly sessionUser: AuthUserSession | null;
-    readonly setAuth: (payload: { accessToken: string; user: AuthUserSession }) => void;
-    readonly setAccessToken: (accessToken: string) => void;
-    readonly setSessionUser: (user: AuthUserSession) => void;
-    readonly clearAuth: () => void;
-}
-
-export type LogoutResponse = ApiMessageResponse;
-
-export interface ConfirmDialogProps {
-    readonly isOpen: boolean;
-    readonly title: string;
-    readonly description: string;
-    readonly confirmLabel?: string;
-    readonly cancelLabel?: string;
-    readonly isLoading?: boolean;
-    readonly variant?: "danger" | "primary";
-    readonly onConfirm: () => void;
-    readonly onCancel: () => void;
-    readonly children?: ReactNode;
-}
-
-export interface DangerButtonProps {
-    readonly children: ReactNode;
-    readonly onClick?: () => void;
-    readonly isLoading?: boolean;
-    readonly disabled?: boolean;
-    readonly className?: string;
-    readonly type?: "button" | "submit" | "reset";
-}
-
-export interface SecondaryButtonProps {
-    readonly children: ReactNode;
-    readonly onClick: () => void;
-    readonly disabled?: boolean;
-    readonly className?: string;
-    readonly type?: "button" | "submit" | "reset";
-}
-
-export interface DangerAlertIconBadgeProps {
-    readonly className?: string;
-}
-
-export interface ForgotPasswordFormData {
-    email: string;
-}
-
 export interface ForgotPasswordRequest {
     readonly email: string;
-}
-
-export type ForgotPasswordResponse = ApiMessageResponse;
-
-export interface FormFeedbackState {
-    readonly type: "success" | "error" | "info";
-    readonly message: string;
-}
-
-export interface FormFeedbackBannerProps {
-    readonly type: "success" | "error" | "info";
-    readonly message: string | null;
-    readonly onClose?: () => void;
-    readonly className?: string;
-}
-
-export interface ForgotPasswordFormProps {
-    readonly register: UseFormRegister<ForgotPasswordFormData>;
-    readonly errors: FieldErrors<ForgotPasswordFormData>;
-    readonly feedback: FormFeedbackState | null;
-    readonly isSubmitting: boolean;
-    readonly onSubmit: () => void;
-    readonly onClearFeedback?: () => void;
-}
-
-export interface BackToLoginLinkProps {
-    readonly to?: string;
-    readonly label?: string;
-    readonly disabled?: boolean;
-    readonly className?: string;
 }
 
 export interface VerifyOtpRequest {
@@ -183,147 +38,37 @@ export interface VerifyOtpResponse {
     readonly resetToken: string;
 }
 
-export interface ResendOtpRequest {
-    readonly email: string;
-}
-
-export type ResendOtpResponse = ApiMessageResponse;
-
-export interface OtpFeedbackState {
-    readonly type: "success" | "error" | "info";
-    readonly message: string;
-}
-
-export interface MaskedEmailNoticeProps {
-    readonly email: string;
-    readonly className?: string;
-}
-
-export interface OtpSlotInputProps {
-    readonly index: number;
-    readonly value: string;
-    readonly disabled?: boolean;
-    readonly isError?: boolean;
-    readonly isFocused?: boolean;
-    readonly onChange: (index: number, char: string) => void;
-    readonly onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
-    readonly onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
-    readonly onFocus: (index: number) => void;
-    readonly inputRef?: (el: HTMLInputElement | null) => void;
-}
-
-export interface OtpInputGroupProps {
-    readonly value: string[];
-    readonly disabled?: boolean;
-    readonly isError?: boolean;
-    readonly activeIndex: number;
-    readonly onChange: (index: number, char: string) => void;
-    readonly onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
-    readonly onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
-    readonly onFocus: (index: number) => void;
-    readonly registerInputRef: (index: number, el: HTMLInputElement | null) => void;
-    readonly className?: string;
-}
-
-export interface OtpResendSectionProps {
-    readonly cooldown: number;
-    readonly isResending: boolean;
-    readonly onResend: () => void;
-    readonly className?: string;
-}
-
-export interface OtpVerificationFormProps {
-    readonly otpDigits: string[];
-    readonly activeSlotIndex: number;
-    readonly feedback: OtpFeedbackState | null;
-    readonly isSubmitting: boolean;
-    readonly isResending: boolean;
-    readonly cooldown: number;
-    readonly onOtpChange: (index: number, char: string) => void;
-    readonly onOtpKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
-    readonly onOtpPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
-    readonly onOtpFocus: (index: number) => void;
-    readonly registerInputRef: (index: number, el: HTMLInputElement | null) => void;
-    readonly onSubmit: () => void;
-    readonly onResend: () => void;
-    readonly onClearFeedback?: () => void;
-}
-
 export interface ResetPasswordRequest {
     readonly resetToken: string;
     readonly newPassword: string;
 }
-
-export type ResetPasswordResponse = ApiMessageResponse;
 
 export interface ChangePasswordRequest {
     readonly currentPassword: string;
     readonly newPassword: string;
 }
 
-export type ChangePasswordResponse = ApiMessageResponse;
+export type MessageResponse = ApiMessageResponse;
 
-export interface PasswordFormFeedback {
-    readonly type: "success" | "error" | "info";
-    readonly message: string;
-}
-
-export type PasswordRuleId =
-    | "min-length"
-    | "has-uppercase"
-    | "has-lowercase"
-    | "has-number"
-    | "has-special";
-
-export interface PasswordRequirement {
-    readonly id: PasswordRuleId;
-    readonly label: string;
-    readonly isMet: boolean;
-}
-
-export interface PasswordRequirementItemProps {
-    readonly requirement: PasswordRequirement;
-    readonly className?: string;
-}
-
-export interface PasswordStrengthIndicatorProps {
-    readonly requirements: readonly PasswordRequirement[];
-    readonly className?: string;
-}
-
-export type PasswordFormMode = "reset" | "change";
-
-export interface PasswordChangeFormProps {
-    readonly mode: PasswordFormMode;
-    readonly registerCurrentPassword?: UseFormRegisterReturn;
-    readonly registerNewPassword: UseFormRegisterReturn;
-    readonly registerConfirmPassword: UseFormRegisterReturn;
-    readonly currentPasswordError?: string;
-    readonly newPasswordError?: string;
-    readonly confirmPasswordError?: string;
-    readonly isSubmitDisabled: boolean;
-    readonly isSubmitting: boolean;
-    readonly feedback: PasswordFormFeedback | null;
-    readonly onSubmit: (e?: React.BaseSyntheticEvent) => Promise<void> | void;
-    readonly onCancel?: () => void;
-    readonly submitButtonText?: string;
-    readonly className?: string;
-}
-
-export interface ResetPasswordContainerProps {
+/** Dữ liệu truyền từ bước xác thực OTP sang trang đặt lại mật khẩu qua history state. */
+export interface ResetPasswordLocationState {
+    readonly email: string;
     readonly resetToken: string;
-    readonly onSuccessRedirect?: (loginUrl: string) => void;
 }
 
-export interface ChangePasswordContainerProps {
-    readonly onSuccess?: () => void;
-    readonly onCancel?: () => void;
-}
+/** Lý do quay về trang đăng nhập, dùng để hiển thị thông báo phù hợp. */
+export type LoginRedirectReason = "logged_out" | "password_reset" | "password_changed";
 
-export interface SettingsCardProps {
-    readonly title: string;
-    readonly description?: string;
-    readonly children: ReactNode;
-    readonly className?: string;
+export interface AuthState {
+    readonly accessToken: string | null;
+    readonly isAuthenticated: boolean;
+    readonly sessionUser: AuthUserSession | null;
+    readonly setAuth: (payload: {
+        accessToken: string;
+        user: AuthUserSession;
+        rememberMe: boolean;
+    }) => void;
+    readonly setAccessToken: (accessToken: string) => void;
+    readonly setSessionUser: (user: AuthUserSession) => void;
+    readonly clearAuth: () => void;
 }
-

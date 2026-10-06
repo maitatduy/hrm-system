@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Button } from "@/components/Button";
 import { useAuthStore } from "../store";
 import { useCurrentUserQuery } from "../hooks/useCurrentUserQuery";
-import { getHomePathByRole } from "../roles";
+import { getHomePathByRole } from "../utils";
 import type { UserRole } from "../types";
 
 export interface ProtectedRouteProps {
@@ -10,53 +11,48 @@ export interface ProtectedRouteProps {
     readonly allowedRoles?: readonly UserRole[];
 }
 
+const FullScreenMessage = ({ children }: { readonly children: ReactNode }) => (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-canvas-soft text-[14px] text-ink-muted">
+        {children}
+    </div>
+);
+
 export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     const location = useLocation();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const sessionUser = useAuthStore((state) => state.sessionUser);
-    const setSessionUser = useAuthStore((state) => state.setSessionUser);
     const currentUserQuery = useCurrentUserQuery();
 
-    useEffect(() => {
-        if (currentUserQuery.data && !sessionUser) {
-            setSessionUser(currentUserQuery.data);
-        }
-    }, [currentUserQuery.data, sessionUser, setSessionUser]);
-
     if (!isAuthenticated) {
-        const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
-        return <Navigate to={`/login?redirect=${redirect}`} replace />;
+        const target = `${location.pathname}${location.search}`;
+        const query = target === "/" ? "" : `?redirect=${encodeURIComponent(target)}`;
+        return <Navigate to={`/login${query}`} replace />;
     }
 
-    const user = sessionUser ?? currentUserQuery.data;
-
-    if (!user) {
-        if (currentUserQuery.isError) {
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-canvas-soft text-[14px] text-ink-muted">
-                    <p>Không thể tải thông tin phiên đăng nhập. Vui lòng thử lại.</p>
-                    <button
-                        type="button"
-                        onClick={() => void currentUserQuery.refetch()}
-                        className="px-4 py-2 rounded-md bg-primary text-white font-semibold cursor-pointer"
-                    >
-                        Thử lại
-                    </button>
-                </div>
-            );
-        }
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-canvas-soft text-[14px] text-ink-muted">
-                Đang tải phiên làm việc...
-            </div>
+    if (!sessionUser) {
+        return currentUserQuery.isError ? (
+            <FullScreenMessage>
+                <p>Không thể tải thông tin phiên đăng nhập. Vui lòng thử lại.</p>
+                <Button className="h-10 w-auto" onClick={() => void currentUserQuery.refetch()}>
+                    Thử lại
+                </Button>
+            </FullScreenMessage>
+        ) : (
+            <FullScreenMessage>
+                <p role="status">Đang tải phiên làm việc...</p>
+            </FullScreenMessage>
         );
     }
 
-    if (allowedRoles && !allowedRoles.includes(user.role)) {
-        return <Navigate to={getHomePathByRole(user.role)} replace />;
+    if (allowedRoles && !allowedRoles.includes(sessionUser.role)) {
+        return <Navigate to={getHomePathByRole(sessionUser.role)} replace />;
     }
 
     return <Outlet />;
 };
 
-export default ProtectedRoute;
+/** Trang gốc "/" đưa người dùng đã đăng nhập về trang chủ theo vai trò. Dùng bên trong ProtectedRoute. */
+export const RoleHomeRedirect = () => {
+    const sessionUser = useAuthStore((state) => state.sessionUser);
+    return sessionUser ? <Navigate to={getHomePathByRole(sessionUser.role)} replace /> : null;
+};

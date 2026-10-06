@@ -1,35 +1,31 @@
-import type { OtpResendSectionProps } from "../types";
+export interface OtpResendSectionProps {
+    readonly secondsLeft: number;
+    readonly isResending: boolean;
+    readonly onResend: () => void;
+}
 
-export const OtpResendSection = ({
-    cooldown,
-    isResending,
-    onResend,
-    className = "",
-}: OtpResendSectionProps) => {
-    const formattedSeconds = cooldown < 10 ? `0${cooldown}` : `${cooldown}`;
+const formatCountdown = (seconds: number) =>
+    `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-    return (
-        <div className={`text-center text-[16px] text-[#615d59] font-normal select-none ${className}`}>
-            {cooldown > 0 ? (
-                <span>
-                    Gửi lại mã sau{" "}
-                    <span className="font-medium tabular-nums text-[#615d59]">
-                        00:{formattedSeconds}
-                    </span>
-                </span>
-            ) : (
-                <span>
-                    Bạn chưa nhận được mã?{" "}
-                    <button
-                        type="button"
-                        onClick={onResend}
-                        disabled={isResending}
-                        className="text-[#0075de] text-[16px] font-medium hover:underline active:text-[#005bab] ml-1 cursor-pointer bg-transparent border-0 p-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isResending ? "Đang gửi lại..." : "Gửi lại mã ngay"}
-                    </button>
-                </span>
-            )}
-        </div>
-    );
-};
+export const OtpResendSection = ({ secondsLeft, isResending, onResend }: OtpResendSectionProps) => (
+    <div className="text-center text-[16px] text-ink-muted select-none">
+        {secondsLeft > 0 ? (
+            <span>
+                Gửi lại mã sau{" "}
+                <span className="font-medium tabular-nums">{formatCountdown(secondsLeft)}</span>
+            </span>
+        ) : (
+            <span>
+                Bạn chưa nhận được mã?{" "}
+                <button
+                    type="button"
+                    onClick={onResend}
+                    disabled={isResending}
+                    className="ml-1 text-primary font-medium hover:underline active:text-primary-active cursor-pointer rounded-xs outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isResending ? "Đang gửi lại..." : "Gửi lại mã ngay"}
+                </button>
+            </span>
+        )}
+    </div>
+);
