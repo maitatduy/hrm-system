@@ -9,6 +9,7 @@ import com.company.hrm.auth.exception.TooManyRequestsException;
 import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
+import com.company.hrm.auth.security.JwtTokens;
 import com.company.hrm.auth.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -60,6 +62,9 @@ class TokenServiceImplTest {
     private UserRepository userRepository;
     @Mock
     private UserMapper userMapper;
+    @Spy
+    private JwtTokens jwtTokens = new JwtTokens(
+            "test-access-secret-at-least-32-bytes-long!!", "test-refresh-secret-at-least-32-bytes-long!");
 
     @InjectMocks
     private TokenServiceImpl tokenService;

@@ -3,14 +3,12 @@ package com.company.hrm.auth.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -39,9 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String REDIS_BLACKLIST_PREFIX = "auth:blacklist:";
 
     private final StringRedisTemplate redisTemplate;
-
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final JwtTokens jwtTokens;
 
     @Override
     protected void doFilterInternal(
@@ -54,12 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(token)) {
             try {
                 // Chỉ nhận access token, refresh token gửi dưới dạng Bearer bị coi là không hợp lệ
-                Claims claims = Jwts.parser()
-                        .verifyWith(JwtTokens.accessKey(jwtSecret))
-                        .require(JwtTokens.TYPE_CLAIM, JwtTokens.ACCESS_TYPE)
-                        .build()
-                        .parseSignedClaims(token)
-                        .getPayload();
+                Claims claims = jwtTokens.parseAccess(token);
 
                 if (isBlacklisted(claims.getId(), token)) {
                     log.warn("Token đã bị đưa vào blacklist: jti={}", claims.getId());

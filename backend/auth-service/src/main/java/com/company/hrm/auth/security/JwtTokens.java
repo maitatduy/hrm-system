@@ -1,43 +1,73 @@
 package com.company.hrm.auth.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-import javax.crypto.Mac;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 
 /**
- * Access token và refresh token mang claim {@value #TYPE_CLAIM} khác nhau và ký bằng hai khóa khác nhau,
- * nên không thể dùng loại này thay cho loại kia: refresh token sống lâu không gọi được API,
- * access token đặt vào cookie refresh không kích hoạt được cơ chế thu hồi toàn bộ phiên.
+ * Nơi duy nhất tạo khóa và parse JWT của auth-service.
+ * <p>
+ * Thứ tách access token khỏi refresh token là claim {@value #TYPE_CLAIM}: filter chỉ nhận {@value #ACCESS_TYPE},
+ * endpoint refresh chỉ nhận {@value #REFRESH_TYPE}. Hai loại còn ký bằng hai secret độc lập
+ * ({@code JWT_SECRET} và {@code JWT_REFRESH_SECRET}). {@code JWT_SECRET} có thể được chia sẻ cho service khác
+ * để xác thực access token, còn {@code JWT_REFRESH_SECRET} chỉ cấp cho auth-service, nên service giữ
+ * {@code JWT_SECRET} vẫn không giả mạo được refresh token.
  */
-public final class JwtTokens {
+@Component
+public class JwtTokens {
 
-    public static final String TYPE_CLAIM = "typ";
+    public static final String TYPE_CLAIM = "token_type";
     public static final String ACCESS_TYPE = "access";
     public static final String REFRESH_TYPE = "refresh";
 
-    private static final String KEY_DERIVATION_ALGORITHM = "HmacSHA256";
-    private static final String REFRESH_KEY_CONTEXT = "hrm-auth:refresh-token-signing-key";
+    private final SecretKey accessKey;
+    private final SecretKey refreshKey;
 
-    private JwtTokens() {
-    }
-
-    /** Ký trực tiếp bằng JWT_SECRET để các service khác, ví dụ api-gateway, xác thực access token được. */
-    public static SecretKey accessKey(String jwtSecret) {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /** Dẫn xuất từ JWT_SECRET theo ngữ cảnh riêng, chỉ auth-service biết, không cần thêm biến môi trường. */
-    public static SecretKey refreshKey(String jwtSecret) {
-        try {
-            Mac mac = Mac.getInstance(KEY_DERIVATION_ALGORITHM);
-            mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), KEY_DERIVATION_ALGORITHM));
-            return Keys.hmacShaKeyFor(mac.doFinal(REFRESH_KEY_CONTEXT.getBytes(StandardCharsets.UTF_8)));
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Không thể dẫn xuất khóa ký refresh token", e);
+    public JwtTokens(
+            @Value("${jwt.secret}") String accessSecret,
+            @Value("${jwt.refresh-secret}") String refreshSecret
+    ) {
+        byte[] accessBytes = accessSecret.getBytes(StandardCharsets.UTF_8);
+        byte[] refreshBytes = refreshSecret.getBytes(StandardCharsets.UTF_8);
+        if (MessageDigest.isEqual(accessBytes, refreshBytes)) {
+            throw new IllegalStateException("JWT_REFRESH_SECRET phải khác JWT_SECRET");
         }
+        // hmacShaKeyFor từ chối khóa ngắn hơn 256 bit, ứng dụng dừng ngay khi khởi động nếu cấu hình yếu
+        this.accessKey = Keys.hmacShaKeyFor(accessBytes);
+        this.refreshKey = Keys.hmacShaKeyFor(refreshBytes);
+    }
+
+    public SecretKey accessKey() {
+        return accessKey;
+    }
+
+    public SecretKey refreshKey() {
+        return refreshKey;
+    }
+
+    /** @throws JwtException khi token sai chữ ký, hết hạn, hoặc không phải access token */
+    public Claims parseAccess(String token) {
+        return parse(token, accessKey, ACCESS_TYPE);
+    }
+
+    /** @throws JwtException khi token sai chữ ký, hết hạn, hoặc không phải refresh token */
+    public Claims parseRefresh(String token) {
+        return parse(token, refreshKey, REFRESH_TYPE);
+    }
+
+    private Claims parse(String token, SecretKey key, String expectedType) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .require(TYPE_CLAIM, expectedType)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

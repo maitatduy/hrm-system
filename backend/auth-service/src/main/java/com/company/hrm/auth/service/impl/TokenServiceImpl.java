@@ -45,7 +45,9 @@ public class TokenServiceImpl implements TokenService {
     private final StringRedisTemplate redisTemplate;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final JwtTokens jwtTokens;
 
+    /** Chỉ dùng làm khóa HMAC cho OTP, việc ký và xác thực JWT đi qua {@link JwtTokens}. */
     @Value("${jwt.secret}")
     private String jwtSecret;
 
@@ -71,24 +73,6 @@ public class TokenServiceImpl implements TokenService {
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final Duration REFRESH_REUSE_GRACE = Duration.ofSeconds(10);
 
-    private Claims parseAccessToken(String token) {
-        return Jwts.parser()
-                .verifyWith(JwtTokens.accessKey(jwtSecret))
-                .require(JwtTokens.TYPE_CLAIM, JwtTokens.ACCESS_TYPE)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    private Claims parseRefreshToken(String token) {
-        return Jwts.parser()
-                .verifyWith(JwtTokens.refreshKey(jwtSecret))
-                .require(JwtTokens.TYPE_CLAIM, JwtTokens.REFRESH_TYPE)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
     @Override
     public TokenPair generateTokens(User user, boolean rememberMe) {
         TokenPair tokenPair = issueTokens(user, rememberMe);
@@ -105,7 +89,7 @@ public class TokenServiceImpl implements TokenService {
         Claims claims;
         try {
             // Access token đặt vào cookie refresh bị từ chối ở đây, trước khi chạm tới logic phát hiện dùng lại
-            claims = parseRefreshToken(refreshToken);
+            claims = jwtTokens.parseRefresh(refreshToken);
         } catch (JwtException e) {
             throw new UnauthorizedException("Refresh token không hợp lệ hoặc đã hết hạn");
         }
@@ -163,7 +147,7 @@ public class TokenServiceImpl implements TokenService {
         String token = accessToken.startsWith("Bearer ") ? accessToken.substring(7) : accessToken;
 
         try {
-            Claims claims = parseAccessToken(token);
+            Claims claims = jwtTokens.parseAccess(token);
 
             String jti = claims.getId();
             Date expiration = claims.getExpiration();
@@ -190,7 +174,7 @@ public class TokenServiceImpl implements TokenService {
         }
 
         try {
-            Claims claims = parseRefreshToken(refreshToken);
+            Claims claims = jwtTokens.parseRefresh(refreshToken);
 
             String userIdStr = claims.getSubject();
             String jti = claims.getId();
@@ -296,7 +280,7 @@ public class TokenServiceImpl implements TokenService {
                 .claim("employeeId", user.getEmployeeId() != null ? user.getEmployeeId().toString() : null)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(JwtTokens.accessKey(jwtSecret))
+                .signWith(jwtTokens.accessKey())
                 .compact();
     }
 
@@ -313,7 +297,7 @@ public class TokenServiceImpl implements TokenService {
                 .claim(REMEMBER_ME_CLAIM, rememberMe)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(JwtTokens.refreshKey(jwtSecret))
+                .signWith(jwtTokens.refreshKey())
                 .compact();
 
         String redisKey = refreshKey(user.getId().toString(), jti);

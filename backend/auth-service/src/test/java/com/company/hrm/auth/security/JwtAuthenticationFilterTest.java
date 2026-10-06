@@ -13,7 +13,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.crypto.SecretKey;
 import java.time.Instant;
@@ -26,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
-    private static final String SECRET = "test-secret-key-that-is-at-least-32-bytes-long!!";
+    private static final JwtTokens JWT_TOKENS = new JwtTokens(
+            "test-access-secret-at-least-32-bytes-long!!", "test-refresh-secret-at-least-32-bytes-long!");
     private static final String USER_ID = UUID.randomUUID().toString();
 
     @Mock
@@ -36,8 +36,7 @@ class JwtAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthenticationFilter(redisTemplate);
-        ReflectionTestUtils.setField(filter, "jwtSecret", SECRET);
+        filter = new JwtAuthenticationFilter(redisTemplate, JWT_TOKENS);
     }
 
     @AfterEach
@@ -47,7 +46,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void authenticatesAccessToken() throws Exception {
-        MockHttpServletRequest request = runFilter(token(JwtTokens.accessKey(SECRET), JwtTokens.ACCESS_TYPE));
+        MockHttpServletRequest request = runFilter(token(JWT_TOKENS.accessKey(), JwtTokens.ACCESS_TYPE));
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         assertThat(authentication).isNotNull();
@@ -58,21 +57,21 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void rejectsRefreshTokenUsedAsBearer() throws Exception {
-        MockHttpServletRequest request = runFilter(token(JwtTokens.refreshKey(SECRET), JwtTokens.REFRESH_TYPE));
+        MockHttpServletRequest request = runFilter(token(JWT_TOKENS.refreshKey(), JwtTokens.REFRESH_TYPE));
 
         assertRejected(request);
     }
 
     @Test
     void rejectsTokenSignedWithAccessKeyButTypedAsRefresh() throws Exception {
-        MockHttpServletRequest request = runFilter(token(JwtTokens.accessKey(SECRET), JwtTokens.REFRESH_TYPE));
+        MockHttpServletRequest request = runFilter(token(JWT_TOKENS.accessKey(), JwtTokens.REFRESH_TYPE));
 
         assertRejected(request);
     }
 
     @Test
     void rejectsTokenWithoutTypeClaim() throws Exception {
-        MockHttpServletRequest request = runFilter(token(JwtTokens.accessKey(SECRET), null));
+        MockHttpServletRequest request = runFilter(token(JWT_TOKENS.accessKey(), null));
 
         assertRejected(request);
     }
