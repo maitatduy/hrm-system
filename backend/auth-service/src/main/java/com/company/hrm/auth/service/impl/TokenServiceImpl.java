@@ -22,13 +22,17 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -58,7 +62,7 @@ public class TokenServiceImpl implements TokenService {
     private static final String REDIS_RESET_PREFIX = "auth:reset:";
     private static final String REDIS_OTP_ATTEMPTS_PREFIX = "auth:otp:attempts:";
 
-    private static final Duration OTP_TTL = Duration.ofMinutes(5);
+    private static final String OTP_HASH_ALGORITHM = "HmacSHA256";
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final Duration REFRESH_REUSE_GRACE = Duration.ofSeconds(10);
 
@@ -198,7 +202,7 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public void storeOtp(String email, String otp) {
         String normalizedEmail = email.toLowerCase();
-        redisTemplate.opsForValue().set(REDIS_OTP_PREFIX + normalizedEmail, otp, OTP_TTL);
+        redisTemplate.opsForValue().set(REDIS_OTP_PREFIX + normalizedEmail, hashOtp(normalizedEmail, otp), OTP_TTL);
         redisTemplate.delete(REDIS_OTP_ATTEMPTS_PREFIX + normalizedEmail);
     }
 
@@ -207,13 +211,13 @@ public class TokenServiceImpl implements TokenService {
         String normalizedEmail = email.toLowerCase();
         String otpKey = REDIS_OTP_PREFIX + normalizedEmail;
         String attemptsKey = REDIS_OTP_ATTEMPTS_PREFIX + normalizedEmail;
-        String storedOtp = redisTemplate.opsForValue().get(otpKey);
+        String storedOtpHash = redisTemplate.opsForValue().get(otpKey);
 
-        if (storedOtp == null) {
+        if (storedOtpHash == null) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn");
         }
 
-        if (!constantTimeEquals(storedOtp, otp)) {
+        if (otp == null || !constantTimeEquals(storedOtpHash, hashOtp(normalizedEmail, otp))) {
             Long attempts = redisTemplate.opsForValue().increment(attemptsKey);
             if (attempts != null && attempts == 1) {
                 redisTemplate.expire(attemptsKey, OTP_TTL);
@@ -318,6 +322,21 @@ public class TokenServiceImpl implements TokenService {
 
     private String refreshGraceKey(String userId, String jti) {
         return REDIS_REFRESH_PREFIX + userId + ":grace:" + jti;
+    }
+
+    /**
+     * Redis chỉ lưu HMAC của OTP, gắn với email và khóa bí mật của server, nên người đọc được Redis
+     * cũng không biết mã và không thể dò ngược 1 triệu tổ hợp nếu không có khóa.
+     */
+    private String hashOtp(String normalizedEmail, String otp) {
+        try {
+            Mac mac = Mac.getInstance(OTP_HASH_ALGORITHM);
+            mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), OTP_HASH_ALGORITHM));
+            byte[] digest = mac.doFinal((normalizedEmail + ":" + otp).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Không thể băm mã OTP", e);
+        }
     }
 
     private boolean constantTimeEquals(String expected, String actual) {
