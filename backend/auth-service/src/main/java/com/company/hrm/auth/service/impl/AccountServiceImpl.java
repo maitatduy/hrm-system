@@ -12,10 +12,13 @@ import com.company.hrm.auth.exception.BadRequestException;
 import com.company.hrm.auth.exception.ResourceNotFoundException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
+import com.company.hrm.auth.security.PasswordGenerator;
 import com.company.hrm.auth.service.AccountService;
 import com.company.hrm.auth.service.TokenService;
+import com.company.hrm.auth.service.event.AccountCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,6 +38,7 @@ public class AccountServiceImpl implements AccountService {
     private final EmployeeServiceClient employeeServiceClient;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,16 +90,16 @@ public class AccountServiceImpl implements AccountService {
             }
         }
 
+        // MANUAL: admin tự đặt và tự giao mật khẩu. Các chế độ còn lại: hệ thống sinh mật khẩu và gửi qua email
+        boolean manualPassword = "MANUAL".equalsIgnoreCase(request.getPasswordMode());
         String rawPassword;
-        if ("RANDOM".equalsIgnoreCase(request.getPasswordMode())) {
-            rawPassword = UUID.randomUUID().toString().substring(0, 10);
-        } else if ("MANUAL".equalsIgnoreCase(request.getPasswordMode())) {
+        if (manualPassword) {
             if (request.getPassword() == null || request.getPassword().length() < 8) {
                 throw new BadRequestException("Mật khẩu thủ công phải có độ dài tối thiểu 8 ký tự");
             }
             rawPassword = request.getPassword();
         } else {
-            rawPassword = "Hrm@" + UUID.randomUUID().toString().substring(0, 6);
+            rawPassword = PasswordGenerator.generate();
         }
 
         User newUser = User.builder()
@@ -107,6 +111,10 @@ public class AccountServiceImpl implements AccountService {
                 .build();
 
         User savedUser = userRepository.save(newUser);
+        if (!manualPassword) {
+            // Listener chỉ gửi email sau khi transaction commit, mật khẩu không bao giờ nằm trong response
+            eventPublisher.publishEvent(new AccountCreatedEvent(email, rawPassword));
+        }
         AccountResponse response = userMapper.toAccountResponse(savedUser);
 
         if (savedUser.getEmployeeId() != null) {

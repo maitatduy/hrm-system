@@ -34,7 +34,8 @@ Tất cả route dưới /api/auth hoặc /api/accounts, kebab-case.
 - POST /api/auth/reset-password, body resetToken và newPassword, không cần xác thực trước vì resetToken đã thay thế vai trò xác thực.
 - PUT /api/auth/change-password, cần xác thực, body currentPassword và newPassword.
 - GET /api/accounts, cần xác thực, chỉ ADMIN, trả danh sách tài khoản kèm phân trang, có join thông tin tên và phòng ban từ employee-service.
-- POST /api/accounts, chỉ ADMIN, body employeeId, email, role, passwordMode.
+- POST /api/accounts, chỉ ADMIN, body employeeId, email, role, passwordMode. `MANUAL` dùng mật khẩu admin nhập trong `password` và không gửi email, admin tự giao mật khẩu. Các chế độ còn lại sinh mật khẩu tạm 16 ký tự bằng SecureRandom (đủ chữ hoa, chữ thường, số, ký tự đặc biệt) và gửi tới email của tài khoản qua `AccountCreatedEvent`, listener chỉ gửi sau khi transaction commit. Mật khẩu không bao giờ nằm trong response hay log. Gửi email thất bại thì người dùng dùng luồng quên mật khẩu.
+- Tài khoản ADMIN đầu tiên: khi khởi động, nếu chưa có ADMIN nào, `AdminBootstrap` tạo ADMIN từ `BOOTSTRAP_ADMIN_EMAIL` và `BOOTSTRAP_ADMIN_PASSWORD` (không gắn employeeId). Đã có ADMIN thì bỏ qua, không ghi đè. Cấu hình sai (email không hợp lệ, mật khẩu dưới 8 ký tự, email đã thuộc tài khoản khác) thì dừng khởi động. Có thể xóa hai biến này sau lần chạy đầu.
 - PUT /api/accounts/{id}/role, chỉ ADMIN, body role mới.
 - PUT /api/accounts/{id}/lock, PUT /api/accounts/{id}/unlock, chỉ ADMIN.
 
