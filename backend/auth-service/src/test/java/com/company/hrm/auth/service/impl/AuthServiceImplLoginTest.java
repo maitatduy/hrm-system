@@ -24,11 +24,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -75,17 +78,36 @@ class AuthServiceImplLoginTest {
     void loginSucceedsAndResetsFailureCounter() {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, "hash")).thenReturn(true);
-        when(tokenService.generateTokens(user)).thenReturn(TokenPair.builder()
+        when(tokenService.generateTokens(user, true)).thenReturn(TokenPair.builder()
+                .accessToken("access")
+                .refreshToken("refresh")
+                .refreshTokenCookieMaxAge(Duration.ofDays(7))
+                .build());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        LoginResponse result = authService.login(new LoginRequest(EMAIL, PASSWORD, true), response);
+
+        assertThat(result.getAccessToken()).isEqualTo("access");
+        assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=refresh", "HttpOnly", "Max-Age=604800");
+        verify(rateLimitService).resetLoginFailures(EMAIL);
+    }
+
+    @Test
+    void loginWithoutRememberMeSetsSessionCookie() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, "hash")).thenReturn(true);
+        when(tokenService.generateTokens(user, false)).thenReturn(TokenPair.builder()
                 .accessToken("access")
                 .refreshToken("refresh")
                 .build());
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        LoginResponse result = authService.login(new LoginRequest(EMAIL, PASSWORD), response);
+        authService.login(new LoginRequest(EMAIL, PASSWORD, false), response);
 
-        assertThat(result.getAccessToken()).isEqualTo("access");
-        assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=refresh", "HttpOnly");
-        verify(rateLimitService).resetLoginFailures(EMAIL);
+        assertThat(response.getHeader("Set-Cookie"))
+                .contains("refreshToken=refresh", "HttpOnly")
+                .doesNotContain("Max-Age")
+                .doesNotContain("Expires");
     }
 
     @Test
@@ -93,7 +115,7 @@ class AuthServiceImplLoginTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, "wrong"), new MockHttpServletResponse()))
+        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, "wrong", false), new MockHttpServletResponse()))
                 .isInstanceOf(UnauthorizedException.class);
         verify(rateLimitService).recordLoginFailure(EMAIL);
     }
@@ -102,7 +124,7 @@ class AuthServiceImplLoginTest {
     void unknownEmailRecordsFailureWithSameError() {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD), new MockHttpServletResponse()))
+        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD, false), new MockHttpServletResponse()))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Email hoặc mật khẩu không chính xác");
         verify(rateLimitService).recordLoginFailure(EMAIL);
@@ -114,7 +136,7 @@ class AuthServiceImplLoginTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, "wrong"), new MockHttpServletResponse()))
+        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, "wrong", false), new MockHttpServletResponse()))
                 .isInstanceOf(UnauthorizedException.class);
     }
 
@@ -124,16 +146,16 @@ class AuthServiceImplLoginTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, "hash")).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD), new MockHttpServletResponse()))
+        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD, false), new MockHttpServletResponse()))
                 .isInstanceOf(ForbiddenException.class);
-        verify(tokenService, never()).generateTokens(user);
+        verify(tokenService, never()).generateTokens(any(), anyBoolean());
     }
 
     @Test
     void rateLimitedLoginIsRejectedBeforeCheckingCredentials() {
         doThrow(new TooManyRequestsException("limit")).when(rateLimitService).checkLoginAllowed(EMAIL);
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD), new MockHttpServletResponse()))
+        assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD, false), new MockHttpServletResponse()))
                 .isInstanceOf(TooManyRequestsException.class);
         verifyNoInteractions(userRepository, passwordEncoder);
     }

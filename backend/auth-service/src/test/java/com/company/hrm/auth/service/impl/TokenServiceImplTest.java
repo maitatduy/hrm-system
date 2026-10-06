@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,6 +42,7 @@ import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +71,7 @@ class TokenServiceImplTest {
         ReflectionTestUtils.setField(tokenService, "jwtSecret", "test-secret-key-that-is-at-least-32-bytes-long!!");
         ReflectionTestUtils.setField(tokenService, "accessTokenExpirationMs", 900_000L);
         ReflectionTestUtils.setField(tokenService, "refreshTokenExpirationMs", 604_800_000L);
+        ReflectionTestUtils.setField(tokenService, "sessionRefreshTokenExpirationMs", 86_400_000L);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         user = User.builder()
@@ -87,7 +90,7 @@ class TokenServiceImplTest {
 
         @BeforeEach
         void issueToken() {
-            refreshToken = tokenService.generateTokens(user).getRefreshToken();
+            refreshToken = tokenService.generateTokens(user, true).getRefreshToken();
         }
 
         @Test
@@ -139,6 +142,49 @@ class TokenServiceImplTest {
 
             assertThatThrownBy(() -> tokenService.refreshToken(refreshToken))
                     .isInstanceOf(UnauthorizedException.class);
+        }
+    }
+
+    @Nested
+    class RememberMe {
+
+        private static final long REMEMBER_TTL_MS = 604_800_000L;
+        private static final long SESSION_TTL_MS = 86_400_000L;
+
+        private void verifyRefreshTokenStoredFor(long ttlMs, int times) {
+            verify(valueOperations, times(times)).set(
+                    startsWith("auth:refresh:" + user.getId() + ":"),
+                    eq("valid"),
+                    eq(ttlMs),
+                    eq(TimeUnit.MILLISECONDS)
+            );
+        }
+
+        @Test
+        void rememberedLoginGetsPersistentCookieAndLongRefreshToken() {
+            TokenPair result = tokenService.generateTokens(user, true);
+
+            assertThat(result.getRefreshTokenCookieMaxAge()).isEqualTo(Duration.ofMillis(REMEMBER_TTL_MS));
+            verifyRefreshTokenStoredFor(REMEMBER_TTL_MS, 1);
+        }
+
+        @Test
+        void sessionLoginGetsSessionCookieAndShortRefreshToken() {
+            TokenPair result = tokenService.generateTokens(user, false);
+
+            assertThat(result.getRefreshTokenCookieMaxAge()).isNull();
+            verifyRefreshTokenStoredFor(SESSION_TTL_MS, 1);
+        }
+
+        @Test
+        void refreshKeepsTheChoiceMadeAtLogin() {
+            String sessionToken = tokenService.generateTokens(user, false).getRefreshToken();
+            when(redisTemplate.delete(anyString())).thenReturn(true);
+
+            TokenPair rotated = tokenService.refreshToken(sessionToken);
+
+            assertThat(rotated.getRefreshTokenCookieMaxAge()).isNull();
+            verifyRefreshTokenStoredFor(SESSION_TTL_MS, 2);
         }
     }
 

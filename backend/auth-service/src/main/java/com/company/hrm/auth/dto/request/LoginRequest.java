@@ -21,4 +21,7 @@ public class LoginRequest {
 
     @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
+
+    /** Bật thì giữ đăng nhập qua lần mở trình duyệt sau, tắt thì phiên kết thúc khi đóng trình duyệt. */
+    private boolean rememberMe;
 }

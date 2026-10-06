@@ -17,6 +17,8 @@ export interface AuthUserSession {
 export interface LoginRequest {
     readonly email: string;
     readonly password: string;
+    /** Backend dùng để chọn cookie lưu bền (true) hay cookie phiên (false) cho refresh token. */
+    readonly rememberMe: boolean;
 }
 
 export interface LoginResponse {

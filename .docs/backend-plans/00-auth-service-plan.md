@@ -25,8 +25,8 @@ Index, unique trên email, index trên role, index trên status.
 
 Tất cả route dưới /api/auth hoặc /api/accounts, kebab-case.
 
-- POST /api/auth/login, body email và password, trả accessToken và thông tin user, đặt refreshToken vào cookie HttpOnly qua header Set-Cookie, không cần xác thực trước.
-- POST /api/auth/refresh-token, đọc refreshToken từ cookie, trả accessToken mới, không cần xác thực trước.
+- POST /api/auth/login, body email, password và rememberMe, trả accessToken và thông tin user, đặt refreshToken vào cookie HttpOnly qua header Set-Cookie, không cần xác thực trước. rememberMe true: refresh token sống `jwt.refresh-token-expiration` (7 ngày) và cookie có Max-Age tương ứng. rememberMe false: refresh token sống `jwt.refresh-token-session-expiration` (1 ngày) và là cookie phiên không có Max-Age, mất khi đóng trình duyệt.
+- POST /api/auth/refresh-token, đọc refreshToken từ cookie, trả accessToken mới, không cần xác thực trước. Lựa chọn ghi nhớ lưu trong claim `remember` của refresh token nên giữ nguyên qua mỗi lần xoay vòng token, token cũ không có claim được coi là đã ghi nhớ.
 - POST /api/auth/logout, cần xác thực, đưa accessToken vào blacklist, xóa refreshToken.
 - GET /api/auth/me, cần xác thực, trả thông tin user hiện tại.
 - POST /api/auth/forgot-password, body email, luôn trả thông báo chung chung dù email có tồn tại hay không, không cần xác thực trước.

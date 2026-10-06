@@ -53,8 +53,13 @@ public class TokenServiceImpl implements TokenService {
     @Value("${jwt.access-token-expiration}")
     private long accessTokenExpirationMs;
 
+    /** Thời gian sống refresh token khi người dùng chọn ghi nhớ đăng nhập. */
     @Value("${jwt.refresh-token-expiration}")
     private long refreshTokenExpirationMs;
+
+    /** Thời gian sống refresh token khi không ghi nhớ, giới hạn phiên nếu trình duyệt tự khôi phục cookie phiên. */
+    @Value("${jwt.refresh-token-session-expiration}")
+    private long sessionRefreshTokenExpirationMs;
 
     private static final String REDIS_REFRESH_PREFIX = "auth:refresh:";
     private static final String REDIS_BLACKLIST_PREFIX = "auth:blacklist:";
@@ -62,6 +67,7 @@ public class TokenServiceImpl implements TokenService {
     private static final String REDIS_RESET_PREFIX = "auth:reset:";
     private static final String REDIS_OTP_ATTEMPTS_PREFIX = "auth:otp:attempts:";
 
+    private static final String REMEMBER_ME_CLAIM = "remember";
     private static final String OTP_HASH_ALGORITHM = "HmacSHA256";
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final Duration REFRESH_REUSE_GRACE = Duration.ofSeconds(10);
@@ -72,18 +78,10 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public TokenPair generateTokens(User user) {
-        String accessToken = createAccessToken(user);
-        String refreshToken = createRefreshToken(user);
-
-        UserSummaryResponse userSummary = userMapper.toSummaryResponse(user);
-
-        return TokenPair.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .user(userSummary)
-                .build();
+    public TokenPair generateTokens(User user, boolean rememberMe) {
+        TokenPair tokenPair = issueTokens(user, rememberMe);
+        tokenPair.setUser(userMapper.toSummaryResponse(user));
+        return tokenPair;
     }
 
     @Override
@@ -133,12 +131,16 @@ public class TokenServiceImpl implements TokenService {
             throw new UnauthorizedException("Tài khoản đã bị khóa. Vui lòng liên hệ Quản trị viên.");
         }
 
-        String newAccessToken = createAccessToken(user);
-        String newRefreshToken = createRefreshToken(user);
+        // Token cấp trước khi có tính năng ghi nhớ không có claim này, coi như đã chọn ghi nhớ như hành vi cũ
+        boolean rememberMe = !Boolean.FALSE.equals(claims.get(REMEMBER_ME_CLAIM, Boolean.class));
+        return issueTokens(user, rememberMe);
+    }
 
+    private TokenPair issueTokens(User user, boolean rememberMe) {
         return TokenPair.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
+                .accessToken(createAccessToken(user))
+                .refreshToken(createRefreshToken(user, rememberMe))
+                .refreshTokenCookieMaxAge(rememberMe ? Duration.ofMillis(refreshTokenExpirationMs) : null)
                 .tokenType("Bearer")
                 .build();
     }
@@ -296,21 +298,23 @@ public class TokenServiceImpl implements TokenService {
                 .compact();
     }
 
-    private String createRefreshToken(User user) {
+    private String createRefreshToken(User user, boolean rememberMe) {
+        long ttlMs = rememberMe ? refreshTokenExpirationMs : sessionRefreshTokenExpirationMs;
         Instant now = Instant.now();
-        Instant expiry = now.plus(Duration.ofMillis(refreshTokenExpirationMs));
+        Instant expiry = now.plus(Duration.ofMillis(ttlMs));
         String jti = UUID.randomUUID().toString();
 
         String token = Jwts.builder()
                 .id(jti)
                 .subject(user.getId().toString())
+                .claim(REMEMBER_ME_CLAIM, rememberMe)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(getSigningKey())
                 .compact();
 
         String redisKey = refreshKey(user.getId().toString(), jti);
-        redisTemplate.opsForValue().set(redisKey, "valid", refreshTokenExpirationMs, TimeUnit.MILLISECONDS);
+        redisTemplate.opsForValue().set(redisKey, "valid", ttlMs, TimeUnit.MILLISECONDS);
 
         return token;
     }
