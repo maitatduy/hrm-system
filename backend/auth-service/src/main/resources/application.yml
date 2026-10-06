@@ -58,6 +58,7 @@ app:
 
 jwt:
   secret: ${JWT_SECRET}
+  refresh-secret: ${JWT_REFRESH_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
   refresh-token-session-expiration: ${JWT_REFRESH_TOKEN_SESSION_EXPIRATION}

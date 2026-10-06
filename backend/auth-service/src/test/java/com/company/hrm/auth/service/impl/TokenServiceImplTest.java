@@ -9,6 +9,8 @@ import com.company.hrm.auth.exception.TooManyRequestsException;
 import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
+import com.company.hrm.auth.security.JwtTokens;
+import com.company.hrm.auth.security.OtpHasher;
 import com.company.hrm.auth.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -60,6 +63,11 @@ class TokenServiceImplTest {
     private UserRepository userRepository;
     @Mock
     private UserMapper userMapper;
+    @Spy
+    private JwtTokens jwtTokens = new JwtTokens(
+            "test-access-secret-at-least-32-bytes-long!!", "test-refresh-secret-at-least-32-bytes-long!");
+    @Spy
+    private OtpHasher otpHasher = new OtpHasher("test-refresh-secret-at-least-32-bytes-long!");
 
     @InjectMocks
     private TokenServiceImpl tokenService;
@@ -68,7 +76,6 @@ class TokenServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(tokenService, "jwtSecret", "test-secret-key-that-is-at-least-32-bytes-long!!");
         ReflectionTestUtils.setField(tokenService, "accessTokenExpirationMs", 900_000L);
         ReflectionTestUtils.setField(tokenService, "refreshTokenExpirationMs", 604_800_000L);
         ReflectionTestUtils.setField(tokenService, "sessionRefreshTokenExpirationMs", 86_400_000L);
@@ -142,6 +149,49 @@ class TokenServiceImplTest {
 
             assertThatThrownBy(() -> tokenService.refreshToken(refreshToken))
                     .isInstanceOf(UnauthorizedException.class);
+        }
+    }
+
+    @Nested
+    class TokenType {
+
+        private TokenPair tokens;
+
+        @BeforeEach
+        void issueTokens() {
+            tokens = tokenService.generateTokens(user, true);
+            clearInvocations(redisTemplate, valueOperations);
+        }
+
+        @Test
+        void accessTokenInRefreshCookieIsRejectedWithoutRevokingSessions() {
+            assertThatThrownBy(() -> tokenService.refreshToken(tokens.getAccessToken()))
+                    .isInstanceOf(UnauthorizedException.class)
+                    .hasMessage("Refresh token không hợp lệ hoặc đã hết hạn");
+
+            verify(redisTemplate, never()).delete(anyString());
+            verify(redisTemplate, never()).scan(any(ScanOptions.class));
+        }
+
+        @Test
+        void refreshTokenCannotBeBlacklistedAsAccessToken() {
+            tokenService.blacklistAccessToken(tokens.getRefreshToken());
+
+            verify(valueOperations, never()).set(startsWith("auth:blacklist:"), anyString(), anyLong(), any(TimeUnit.class));
+        }
+
+        @Test
+        void accessTokenCannotRevokeRefreshSession() {
+            tokenService.revokeRefreshToken(tokens.getAccessToken());
+
+            verify(redisTemplate, never()).delete(any(java.util.Collection.class));
+        }
+
+        @Test
+        void blacklistsAccessToken() {
+            tokenService.blacklistAccessToken(tokens.getAccessToken());
+
+            verify(valueOperations).set(startsWith("auth:blacklist:"), eq("revoked"), anyLong(), eq(TimeUnit.MILLISECONDS));
         }
     }
 

@@ -9,11 +9,12 @@ import com.company.hrm.auth.exception.TooManyRequestsException;
 import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
+import com.company.hrm.auth.security.JwtTokens;
+import com.company.hrm.auth.security.OtpHasher;
 import com.company.hrm.auth.service.TokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,17 +23,10 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -46,9 +40,8 @@ public class TokenServiceImpl implements TokenService {
     private final StringRedisTemplate redisTemplate;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final JwtTokens jwtTokens;
+    private final OtpHasher otpHasher;
 
     @Value("${jwt.access-token-expiration}")
     private long accessTokenExpirationMs;
@@ -68,14 +61,8 @@ public class TokenServiceImpl implements TokenService {
     private static final String REDIS_OTP_ATTEMPTS_PREFIX = "auth:otp:attempts:";
 
     private static final String REMEMBER_ME_CLAIM = "remember";
-    private static final String OTP_HASH_ALGORITHM = "HmacSHA256";
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final Duration REFRESH_REUSE_GRACE = Duration.ofSeconds(10);
-
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
 
     @Override
     public TokenPair generateTokens(User user, boolean rememberMe) {
@@ -92,11 +79,8 @@ public class TokenServiceImpl implements TokenService {
 
         Claims claims;
         try {
-            claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(refreshToken)
-                    .getPayload();
+            // Access token đặt vào cookie refresh bị từ chối ở đây, trước khi chạm tới logic phát hiện dùng lại
+            claims = jwtTokens.parseRefresh(refreshToken);
         } catch (JwtException e) {
             throw new UnauthorizedException("Refresh token không hợp lệ hoặc đã hết hạn");
         }
@@ -154,11 +138,7 @@ public class TokenServiceImpl implements TokenService {
         String token = accessToken.startsWith("Bearer ") ? accessToken.substring(7) : accessToken;
 
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+            Claims claims = jwtTokens.parseAccess(token);
 
             String jti = claims.getId();
             Date expiration = claims.getExpiration();
@@ -185,11 +165,7 @@ public class TokenServiceImpl implements TokenService {
         }
 
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(refreshToken)
-                    .getPayload();
+            Claims claims = jwtTokens.parseRefresh(refreshToken);
 
             String userIdStr = claims.getSubject();
             String jti = claims.getId();
@@ -204,7 +180,7 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public void storeOtp(String email, String otp) {
         String normalizedEmail = email.toLowerCase();
-        redisTemplate.opsForValue().set(REDIS_OTP_PREFIX + normalizedEmail, hashOtp(normalizedEmail, otp), OTP_TTL);
+        redisTemplate.opsForValue().set(REDIS_OTP_PREFIX + normalizedEmail, otpHasher.hash(normalizedEmail, otp), OTP_TTL);
         redisTemplate.delete(REDIS_OTP_ATTEMPTS_PREFIX + normalizedEmail);
     }
 
@@ -219,7 +195,7 @@ public class TokenServiceImpl implements TokenService {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn");
         }
 
-        if (otp == null || !constantTimeEquals(storedOtpHash, hashOtp(normalizedEmail, otp))) {
+        if (!otpHasher.matches(storedOtpHash, normalizedEmail, otp)) {
             Long attempts = redisTemplate.opsForValue().increment(attemptsKey);
             if (attempts != null && attempts == 1) {
                 redisTemplate.expire(attemptsKey, OTP_TTL);
@@ -289,12 +265,13 @@ public class TokenServiceImpl implements TokenService {
         return Jwts.builder()
                 .id(jti)
                 .subject(user.getId().toString())
+                .claim(JwtTokens.TYPE_CLAIM, JwtTokens.ACCESS_TYPE)
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
                 .claim("employeeId", user.getEmployeeId() != null ? user.getEmployeeId().toString() : null)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(getSigningKey())
+                .signWith(jwtTokens.accessKey())
                 .compact();
     }
 
@@ -307,10 +284,11 @@ public class TokenServiceImpl implements TokenService {
         String token = Jwts.builder()
                 .id(jti)
                 .subject(user.getId().toString())
+                .claim(JwtTokens.TYPE_CLAIM, JwtTokens.REFRESH_TYPE)
                 .claim(REMEMBER_ME_CLAIM, rememberMe)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(getSigningKey())
+                .signWith(jwtTokens.refreshKey())
                 .compact();
 
         String redisKey = refreshKey(user.getId().toString(), jti);
@@ -326,30 +304,5 @@ public class TokenServiceImpl implements TokenService {
 
     private String refreshGraceKey(String userId, String jti) {
         return REDIS_REFRESH_PREFIX + userId + ":grace:" + jti;
-    }
-
-    /**
-     * Redis chỉ lưu HMAC của OTP, gắn với email và khóa bí mật của server, nên người đọc được Redis
-     * cũng không biết mã và không thể dò ngược 1 triệu tổ hợp nếu không có khóa.
-     */
-    private String hashOtp(String normalizedEmail, String otp) {
-        try {
-            Mac mac = Mac.getInstance(OTP_HASH_ALGORITHM);
-            mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), OTP_HASH_ALGORITHM));
-            byte[] digest = mac.doFinal((normalizedEmail + ":" + otp).getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Không thể băm mã OTP", e);
-        }
-    }
-
-    private boolean constantTimeEquals(String expected, String actual) {
-        if (actual == null) {
-            return false;
-        }
-        return MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8),
-                actual.getBytes(StandardCharsets.UTF_8)
-        );
     }
 }

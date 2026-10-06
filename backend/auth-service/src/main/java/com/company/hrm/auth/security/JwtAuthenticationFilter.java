@@ -3,15 +3,12 @@ package com.company.hrm.auth.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,9 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.crypto.SecretKey;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
@@ -42,9 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String REDIS_BLACKLIST_PREFIX = "auth:blacklist:";
 
     private final StringRedisTemplate redisTemplate;
-
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final JwtTokens jwtTokens;
 
     @Override
     protected void doFilterInternal(
@@ -56,12 +49,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token)) {
             try {
-                SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-                Claims claims = Jwts.parser()
-                        .verifyWith(key)
-                        .build()
-                        .parseSignedClaims(token)
-                        .getPayload();
+                // Chỉ nhận access token, refresh token gửi dưới dạng Bearer bị coi là không hợp lệ
+                Claims claims = jwtTokens.parseAccess(token);
 
                 if (isBlacklisted(claims.getId(), token)) {
                     log.warn("Token đã bị đưa vào blacklist: jti={}", claims.getId());
