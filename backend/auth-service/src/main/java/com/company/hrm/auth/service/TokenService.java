@@ -10,7 +10,11 @@ public interface TokenService {
     /** Thời gian hiệu lực của mã OTP, dùng chung cho Redis TTL và nội dung email. */
     Duration OTP_TTL = Duration.ofMinutes(5);
 
-    TokenPair generateTokens(User user);
+    /**
+     * Cấp cặp token khi đăng nhập. rememberMe quyết định thời gian sống của refresh token và
+     * cookie lưu bền hay chỉ là cookie phiên, lựa chọn này được giữ nguyên qua các lần refresh.
+     */
+    TokenPair generateTokens(User user, boolean rememberMe);
 
     TokenPair refreshToken(String refreshToken);
 

@@ -8,7 +8,7 @@ import type { LoginFormValues } from "../schemas";
 import { CURRENT_USER_QUERY_KEY } from "./useCurrentUserQuery";
 
 const login = withApiError(
-    ({ email, password }: LoginFormValues) => loginApi({ email, password }),
+    ({ email, password, rememberMe }: LoginFormValues) => loginApi({ email, password, rememberMe }),
     ERROR_MESSAGES.SERVER_UNREACHABLE,
 );
 

@@ -32,7 +32,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -71,16 +70,8 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        TokenPair tokenPair = tokenService.generateTokens(user);
-
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, tokenPair.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/api/auth")
-                .maxAge(Duration.ofDays(7))
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        TokenPair tokenPair = tokenService.generateTokens(user, request.isRememberMe());
+        addRefreshTokenCookie(response, tokenPair);
 
         return LoginResponse.builder()
                 .accessToken(tokenPair.getAccessToken())
@@ -96,15 +87,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         TokenPair tokenPair = tokenService.refreshToken(refreshToken);
-
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, tokenPair.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/api/auth")
-                .maxAge(Duration.ofDays(7))
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        addRefreshTokenCookie(response, tokenPair);
 
         return TokenRefreshResponse.builder()
                 .accessToken(tokenPair.getAccessToken())
@@ -122,14 +105,24 @@ public class AuthServiceImpl implements AuthService {
             tokenService.revokeRefreshToken(refreshToken);
         }
 
-        ResponseCookie clearCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie("").maxAge(0).build().toString());
+    }
+
+    /** Có maxAge thì là cookie lưu bền (ghi nhớ đăng nhập), không có thì là cookie phiên. */
+    private void addRefreshTokenCookie(HttpServletResponse response, TokenPair tokenPair) {
+        ResponseCookie.ResponseCookieBuilder cookie = refreshTokenCookie(tokenPair.getRefreshToken());
+        if (tokenPair.getRefreshTokenCookieMaxAge() != null) {
+            cookie.maxAge(tokenPair.getRefreshTokenCookieMaxAge());
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.build().toString());
+    }
+
+    private ResponseCookie.ResponseCookieBuilder refreshTokenCookie(String value) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, value)
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
-                .path("/api/auth")
-                .maxAge(0)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+                .path("/api/auth");
     }
 
     @Override
