@@ -41,13 +41,8 @@ export const OtpVerificationForm = ({
 
         <OtpInputGroup {...otpInput} disabled={isSubmitting} isError={feedback?.type === "error"} />
 
-        <Button
-            type="submit"
-            className="w-full"
-            isLoading={isSubmitting}
-            loadingText="Đang xác thực..."
-        >
-            Xác nhận mã
+        <Button type="submit" className="w-full" isLoading={isSubmitting}>
+            Xác nhận
         </Button>
 
         <OtpResendSection

@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { ERROR_MESSAGES } from "@/constants/messages";
 import { withApiError } from "@/lib/apiError";
 import { changePasswordApi, forgotPasswordApi, resetPasswordApi, verifyOtpApi } from "../api";
 import type {
@@ -10,12 +11,10 @@ import type {
     VerifyOtpResponse,
 } from "../types";
 
-const CONNECTION_ERROR = "Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại.";
-
-const forgotPassword = withApiError(forgotPasswordApi, CONNECTION_ERROR);
-const verifyOtp = withApiError(verifyOtpApi, CONNECTION_ERROR);
-const resetPassword = withApiError(resetPasswordApi, CONNECTION_ERROR);
-const changePassword = withApiError(changePasswordApi, CONNECTION_ERROR);
+const forgotPassword = withApiError(forgotPasswordApi, ERROR_MESSAGES.SERVER_UNREACHABLE);
+const verifyOtp = withApiError(verifyOtpApi, ERROR_MESSAGES.SERVER_UNREACHABLE);
+const resetPassword = withApiError(resetPasswordApi, ERROR_MESSAGES.SERVER_UNREACHABLE);
+const changePassword = withApiError(changePasswordApi, ERROR_MESSAGES.SERVER_UNREACHABLE);
 
 /** Dùng cho cả gửi OTP lần đầu và gửi lại OTP. */
 export const useForgotPasswordMutation = () =>

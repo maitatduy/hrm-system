@@ -1,20 +1,18 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { FormFeedback } from "@/components/FormFeedbackBanner";
 import { forgotPasswordFormSchema, type ForgotPasswordFormValues } from "../schemas";
 import { useForgotPasswordMutation } from "../hooks/usePasswordMutations";
-import { useDelayedNavigate } from "../hooks/useDelayedNavigate";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 
-const REDIRECT_DELAY_MS = 2000;
-
+/** Gửi mã thành công thì chuyển thẳng sang bước nhập OTP, không hiện thông báo trung gian. */
 export const ForgotPasswordFormContainer = () => {
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [feedback, setFeedback] = useState<FormFeedback | null>(null);
     const forgotPasswordMutation = useForgotPasswordMutation();
-    const navigateLater = useDelayedNavigate(REDIRECT_DELAY_MS);
 
     const {
         register,
@@ -30,10 +28,7 @@ export const ForgotPasswordFormContainer = () => {
         forgotPasswordMutation.mutate(
             { email },
             {
-                onSuccess: (response) => {
-                    setFeedback({ type: "success", message: response.message });
-                    navigateLater(`/verify-otp?email=${encodeURIComponent(email)}`);
-                },
+                onSuccess: () => navigate(`/verify-otp?email=${encodeURIComponent(email)}`),
                 onError: (error) => setFeedback({ type: "error", message: error.message }),
             },
         );
@@ -45,8 +40,6 @@ export const ForgotPasswordFormContainer = () => {
             errors={errors}
             feedback={feedback}
             isSubmitting={forgotPasswordMutation.isPending}
-            // Khóa form trong lúc chờ chuyển trang để tránh gửi lại OTP liên tục
-            isRedirecting={forgotPasswordMutation.isSuccess}
             onSubmit={() => void onSubmit()}
             onClearFeedback={() => setFeedback(null)}
         />

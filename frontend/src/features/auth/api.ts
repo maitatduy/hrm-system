@@ -1,3 +1,4 @@
+import { ERROR_MESSAGES } from "@/constants/messages";
 import { apiClient } from "@/lib/axios";
 import type { ApiResponse } from "@/lib/apiError";
 import type {
@@ -14,7 +15,7 @@ import type {
 
 const unwrapData = <T>(body: ApiResponse<T>): T => {
     if (body.data === undefined || body.data === null) {
-        throw new Error("Phản hồi từ máy chủ không chứa dữ liệu");
+        throw new Error(ERROR_MESSAGES.EMPTY_RESPONSE);
     }
     return body.data;
 };

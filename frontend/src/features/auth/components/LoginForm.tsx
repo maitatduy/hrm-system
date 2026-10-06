@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import type { FieldErrors, UseFormRegister } from "react-hook-form";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
@@ -39,11 +38,10 @@ export const LoginForm = ({
             onClose={onClearServerError}
         />
 
-        <FormField id="login-email" label="Email công việc" error={errors.email?.message} required>
+        <FormField id="login-email" label="Email" error={errors.email?.message}>
             <TextInput
                 id="login-email"
                 type="email"
-                placeholder="nguyenvana@hrm.com"
                 autoComplete="email"
                 disabled={isSubmitting}
                 error={errors.email?.message}
@@ -51,10 +49,9 @@ export const LoginForm = ({
             />
         </FormField>
 
-        <FormField id="login-password" label="Mật khẩu" error={errors.password?.message} required>
+        <FormField id="login-password" label="Mật khẩu" error={errors.password?.message}>
             <PasswordInput
                 id="login-password"
-                placeholder="••••••••••••"
                 autoComplete="current-password"
                 disabled={isSubmitting}
                 error={errors.password?.message}
@@ -72,14 +69,8 @@ export const LoginForm = ({
             <AuthLink to="/forgot-password" label="Quên mật khẩu?" disabled={isSubmitting} />
         </div>
 
-        <Button
-            type="submit"
-            className="w-full"
-            isLoading={isSubmitting}
-            loadingText="Đang đăng nhập..."
-        >
-            <span>Đăng nhập</span>
-            <ArrowRight className="w-4.5 h-4.5 ml-1.5" aria-hidden="true" />
+        <Button type="submit" className="w-full" isLoading={isSubmitting}>
+            Đăng nhập
         </Button>
     </form>
 );

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/Button";
+import { AUTH_MESSAGES } from "@/constants/messages";
 import { useAuthStore } from "../store";
 import { useCurrentUserQuery } from "../hooks/useCurrentUserQuery";
 import { getHomePathByRole } from "../utils";
@@ -32,14 +33,14 @@ export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     if (!sessionUser) {
         return currentUserQuery.isError ? (
             <FullScreenMessage>
-                <p>Không thể tải thông tin phiên đăng nhập. Vui lòng thử lại.</p>
+                <p>{AUTH_MESSAGES.SESSION_LOAD_FAILED}</p>
                 <Button className="h-10 w-auto" onClick={() => void currentUserQuery.refetch()}>
                     Thử lại
                 </Button>
             </FullScreenMessage>
         ) : (
             <FullScreenMessage>
-                <p role="status">Đang tải phiên làm việc...</p>
+                <p role="status">{AUTH_MESSAGES.SESSION_LOADING}</p>
             </FullScreenMessage>
         );
     }

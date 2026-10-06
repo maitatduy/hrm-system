@@ -3,21 +3,15 @@ import { cn } from "@/lib/cn";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useAuthStore } from "@/features/auth/store";
 import { getHomePathByRole } from "@/features/auth/utils";
-import type { UserRole } from "@/features/auth/types";
 
 interface NavItem {
     readonly label: string;
-    /** Bỏ trống nghĩa là tính năng chưa có, hiển thị dạng vô hiệu hóa. */
-    readonly to?: string;
-    readonly roles?: readonly UserRole[];
+    readonly to: string;
 }
 
+// Chỉ liệt kê các mục đã có trang, module mới sẽ được thêm vào đây khi hoàn thành
 const buildNavItems = (homePath: string): readonly NavItem[] => [
     { label: "Tổng quan", to: homePath },
-    { label: "Hồ sơ nhân viên" },
-    { label: "Chấm công" },
-    { label: "Nghỉ phép" },
-    { label: "Bảng lương", roles: ["ADMIN", "HR"] },
     { label: "Cài đặt", to: "/settings" },
 ];
 
@@ -27,9 +21,7 @@ const NAV_ITEM_CLASS_NAME = "px-3 py-2 rounded-md text-[14px] transition-colors"
 export const DashboardLayout = () => {
     const role = useAuthStore((state) => state.sessionUser?.role) ?? "EMPLOYEE";
     const homePath = getHomePathByRole(role);
-    const navItems = buildNavItems(homePath).filter(
-        (item) => !item.roles || item.roles.includes(role),
-    );
+    const navItems = buildNavItems(homePath);
 
     return (
         <div className="min-h-screen bg-canvas-soft flex flex-col">
@@ -46,38 +38,24 @@ export const DashboardLayout = () => {
             <div className="pt-16 flex flex-1">
                 <aside className="w-64 bg-surface border-r border-hairline p-4 hidden md:block">
                     <nav aria-label="Điều hướng chính" className="flex flex-col gap-1">
-                        {navItems.map((item) =>
-                            item.to ? (
-                                <NavLink
-                                    key={item.label}
-                                    to={item.to}
-                                    end
-                                    className={({ isActive }) =>
-                                        cn(
-                                            NAV_ITEM_CLASS_NAME,
-                                            "outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-                                            isActive
-                                                ? "bg-primary/10 text-primary font-semibold"
-                                                : "text-ink-secondary hover:bg-canvas-soft",
-                                        )
-                                    }
-                                >
-                                    {item.label}
-                                </NavLink>
-                            ) : (
-                                <span
-                                    key={item.label}
-                                    aria-disabled="true"
-                                    title="Tính năng đang được phát triển"
-                                    className={cn(
+                        {navItems.map((item) => (
+                            <NavLink
+                                key={item.label}
+                                to={item.to}
+                                end
+                                className={({ isActive }) =>
+                                    cn(
                                         NAV_ITEM_CLASS_NAME,
-                                        "text-ink-faint cursor-not-allowed select-none",
-                                    )}
-                                >
-                                    {item.label}
-                                </span>
-                            ),
-                        )}
+                                        "outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                                        isActive
+                                            ? "bg-primary/10 text-primary font-semibold"
+                                            : "text-ink-secondary hover:bg-canvas-soft",
+                                    )
+                                }
+                            >
+                                {item.label}
+                            </NavLink>
+                        ))}
                     </nav>
                 </aside>
 

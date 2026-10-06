@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { FormFeedback } from "@/components/FormFeedbackBanner";
+import { VALIDATION_MESSAGES } from "@/constants/messages";
 import { useOtpInput } from "../hooks/useOtpInput";
 import { useCountdown } from "../hooks/useCountdown";
 import { useForgotPasswordMutation, useVerifyOtpMutation } from "../hooks/usePasswordMutations";
@@ -32,7 +33,7 @@ export const OtpVerificationFormContainer = ({ email }: OtpVerificationFormConta
         if (!otp.isComplete) {
             setFeedback({
                 type: "error",
-                message: `Vui lòng nhập đủ ${OTP_LENGTH} chữ số mã xác thực.`,
+                message: VALIDATION_MESSAGES.otpIncomplete(OTP_LENGTH),
             });
             return;
         }
@@ -60,10 +61,6 @@ export const OtpVerificationFormContainer = ({ email }: OtpVerificationFormConta
                 onSuccess: () => {
                     resendCountdown.restart();
                     otp.reset();
-                    setFeedback({
-                        type: "success",
-                        message: "Mã xác thực mới đã được gửi tới email của bạn.",
-                    });
                 },
                 onError: (error) => setFeedback({ type: "error", message: error.message }),
             },
