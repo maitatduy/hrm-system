@@ -7,6 +7,7 @@ import com.company.hrm.auth.dto.response.ApiResponse;
 import com.company.hrm.auth.dto.response.PageResponse;
 import com.company.hrm.auth.enums.Role;
 import com.company.hrm.auth.enums.UserStatus;
+import com.company.hrm.auth.exception.BadRequestException;
 import com.company.hrm.auth.service.AccountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -34,6 +36,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Tag(name = "Account Management", description = "Các API quản lý tài khoản người dùng dành riêng cho ADMIN")
 public class AccountController {
+
+    private static final Set<String> SORTABLE_FIELDS = Set.of("createdAt", "email", "role", "status", "lastLoginAt");
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final AccountService accountService;
 
@@ -49,8 +54,11 @@ public class AccountController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction
     ) {
+        if (!SORTABLE_FIELDS.contains(sortBy)) {
+            throw new BadRequestException("Không hỗ trợ sắp xếp theo trường: " + sortBy);
+        }
         Sort sort = direction.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), sort);
         PageResponse<AccountResponse> response = accountService.getAccounts(role, status, keyword, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
