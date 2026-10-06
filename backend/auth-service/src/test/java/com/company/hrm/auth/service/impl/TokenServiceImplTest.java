@@ -10,6 +10,7 @@ import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.security.JwtTokens;
+import com.company.hrm.auth.security.OtpHasher;
 import com.company.hrm.auth.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -65,6 +66,8 @@ class TokenServiceImplTest {
     @Spy
     private JwtTokens jwtTokens = new JwtTokens(
             "test-access-secret-at-least-32-bytes-long!!", "test-refresh-secret-at-least-32-bytes-long!");
+    @Spy
+    private OtpHasher otpHasher = new OtpHasher("test-refresh-secret-at-least-32-bytes-long!");
 
     @InjectMocks
     private TokenServiceImpl tokenService;
@@ -73,7 +76,6 @@ class TokenServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(tokenService, "jwtSecret", "test-secret-key-that-is-at-least-32-bytes-long!!");
         ReflectionTestUtils.setField(tokenService, "accessTokenExpirationMs", 900_000L);
         ReflectionTestUtils.setField(tokenService, "refreshTokenExpirationMs", 604_800_000L);
         ReflectionTestUtils.setField(tokenService, "sessionRefreshTokenExpirationMs", 86_400_000L);

@@ -10,6 +10,7 @@ import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.security.JwtTokens;
+import com.company.hrm.auth.security.OtpHasher;
 import com.company.hrm.auth.service.TokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -22,16 +23,10 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -46,10 +41,7 @@ public class TokenServiceImpl implements TokenService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final JwtTokens jwtTokens;
-
-    /** Chỉ dùng làm khóa HMAC cho OTP, việc ký và xác thực JWT đi qua {@link JwtTokens}. */
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final OtpHasher otpHasher;
 
     @Value("${jwt.access-token-expiration}")
     private long accessTokenExpirationMs;
@@ -69,7 +61,6 @@ public class TokenServiceImpl implements TokenService {
     private static final String REDIS_OTP_ATTEMPTS_PREFIX = "auth:otp:attempts:";
 
     private static final String REMEMBER_ME_CLAIM = "remember";
-    private static final String OTP_HASH_ALGORITHM = "HmacSHA256";
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final Duration REFRESH_REUSE_GRACE = Duration.ofSeconds(10);
 
@@ -189,7 +180,7 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public void storeOtp(String email, String otp) {
         String normalizedEmail = email.toLowerCase();
-        redisTemplate.opsForValue().set(REDIS_OTP_PREFIX + normalizedEmail, hashOtp(normalizedEmail, otp), OTP_TTL);
+        redisTemplate.opsForValue().set(REDIS_OTP_PREFIX + normalizedEmail, otpHasher.hash(normalizedEmail, otp), OTP_TTL);
         redisTemplate.delete(REDIS_OTP_ATTEMPTS_PREFIX + normalizedEmail);
     }
 
@@ -204,7 +195,7 @@ public class TokenServiceImpl implements TokenService {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn");
         }
 
-        if (otp == null || !constantTimeEquals(storedOtpHash, hashOtp(normalizedEmail, otp))) {
+        if (!otpHasher.matches(storedOtpHash, normalizedEmail, otp)) {
             Long attempts = redisTemplate.opsForValue().increment(attemptsKey);
             if (attempts != null && attempts == 1) {
                 redisTemplate.expire(attemptsKey, OTP_TTL);
@@ -313,30 +304,5 @@ public class TokenServiceImpl implements TokenService {
 
     private String refreshGraceKey(String userId, String jti) {
         return REDIS_REFRESH_PREFIX + userId + ":grace:" + jti;
-    }
-
-    /**
-     * Redis chỉ lưu HMAC của OTP, gắn với email và khóa bí mật của server, nên người đọc được Redis
-     * cũng không biết mã và không thể dò ngược 1 triệu tổ hợp nếu không có khóa.
-     */
-    private String hashOtp(String normalizedEmail, String otp) {
-        try {
-            Mac mac = Mac.getInstance(OTP_HASH_ALGORITHM);
-            mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), OTP_HASH_ALGORITHM));
-            byte[] digest = mac.doFinal((normalizedEmail + ":" + otp).getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Không thể băm mã OTP", e);
-        }
-    }
-
-    private boolean constantTimeEquals(String expected, String actual) {
-        if (actual == null) {
-            return false;
-        }
-        return MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8),
-                actual.getBytes(StandardCharsets.UTF_8)
-        );
     }
 }
