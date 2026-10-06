@@ -1,27 +1,25 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toApiError } from "@/lib/apiError";
+import { withApiError } from "@/lib/apiError";
 import { loginApi } from "../api";
 import { useAuthStore } from "../store";
-import type { LoginRequest, LoginResponse } from "../types";
+import type { LoginResponse } from "../types";
+import type { LoginFormValues } from "../schemas";
+import { CURRENT_USER_QUERY_KEY } from "./useCurrentUserQuery";
+
+const login = withApiError(
+    ({ email, password }: LoginFormValues) => loginApi({ email, password }),
+    "Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại.",
+);
 
 export const useLoginMutation = () => {
     const queryClient = useQueryClient();
     const setAuth = useAuthStore((state) => state.setAuth);
 
-    return useMutation<LoginResponse, Error, LoginRequest>({
-        mutationFn: async (credentials) => {
-            try {
-                return await loginApi(credentials);
-            } catch (error) {
-                throw toApiError(error, "Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại.");
-            }
-        },
-        onSuccess: (data) => {
-            setAuth({
-                accessToken: data.accessToken,
-                user: data.user,
-            });
-            queryClient.setQueryData(["auth", "me"], data.user);
+    return useMutation<LoginResponse, Error, LoginFormValues>({
+        mutationFn: login,
+        onSuccess: (data, { rememberMe }) => {
+            setAuth({ accessToken: data.accessToken, user: data.user, rememberMe });
+            queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
         },
     });
 };

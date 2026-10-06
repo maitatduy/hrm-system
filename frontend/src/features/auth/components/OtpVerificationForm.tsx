@@ -1,71 +1,61 @@
-import { FormFeedbackBanner } from "@/components/FormFeedbackBanner";
+import type { ComponentProps } from "react";
+import { Button } from "@/components/Button";
+import { FormFeedbackBanner, type FormFeedback } from "@/components/FormFeedbackBanner";
 import { OtpInputGroup } from "@/components/OtpInputGroup";
-import { SubmitButton } from "@/components/SubmitButton";
+import { BackToLoginLink } from "./AuthLink";
 import { OtpResendSection } from "./OtpResendSection";
-import { BackToLoginLink } from "./BackToLoginLink";
-import type { OtpVerificationFormProps } from "../types";
+
+export interface OtpVerificationFormProps {
+    readonly otpInput: Omit<
+        ComponentProps<typeof OtpInputGroup>,
+        "disabled" | "isError" | "className"
+    >;
+    readonly feedback: FormFeedback | null;
+    readonly isSubmitting: boolean;
+    readonly isResending: boolean;
+    readonly resendSecondsLeft: number;
+    readonly onSubmit: () => void;
+    readonly onResend: () => void;
+    readonly onClearFeedback: () => void;
+}
 
 export const OtpVerificationForm = ({
-    otpDigits,
-    activeSlotIndex,
+    otpInput,
     feedback,
     isSubmitting,
     isResending,
-    cooldown,
-    onOtpChange,
-    onOtpKeyDown,
-    onOtpPaste,
-    onOtpFocus,
-    registerInputRef,
+    resendSecondsLeft,
     onSubmit,
     onResend,
     onClearFeedback,
-}: OtpVerificationFormProps) => {
-    const isError = feedback?.type === "error";
+}: OtpVerificationFormProps) => (
+    <form
+        onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+        }}
+        className="flex flex-col gap-5 w-full"
+        noValidate
+    >
+        <FormFeedbackBanner feedback={feedback} onClose={onClearFeedback} />
 
-    return (
-        <form
-            id="otpVerificationForm"
-            onSubmit={(e) => {
-                e.preventDefault();
-                onSubmit();
-            }}
-            className="flex flex-col gap-5 w-full"
-            noValidate
+        <OtpInputGroup {...otpInput} disabled={isSubmitting} isError={feedback?.type === "error"} />
+
+        <Button
+            type="submit"
+            className="w-full"
+            isLoading={isSubmitting}
+            loadingText="Đang xác thực..."
         >
-            {feedback && (
-                <FormFeedbackBanner
-                    type={feedback.type}
-                    message={feedback.message}
-                    onClose={onClearFeedback}
-                />
-            )}
+            Xác nhận mã
+        </Button>
 
-            <OtpInputGroup
-                value={otpDigits}
-                disabled={isSubmitting}
-                isError={isError}
-                activeIndex={activeSlotIndex}
-                onChange={onOtpChange}
-                onKeyDown={onOtpKeyDown}
-                onPaste={onOtpPaste}
-                onFocus={onOtpFocus}
-                registerInputRef={registerInputRef}
-            />
+        <OtpResendSection
+            secondsLeft={resendSecondsLeft}
+            isResending={isResending}
+            onResend={onResend}
+        />
 
-            <SubmitButton isLoading={isSubmitting} loadingText="Đang xác thực...">
-                <span>Xác nhận mã</span>
-            </SubmitButton>
-
-            <OtpResendSection
-                cooldown={cooldown}
-                isResending={isResending}
-                onResend={onResend}
-            />
-
-            <div className="text-center pt-1">
-                <BackToLoginLink disabled={isSubmitting} />
-            </div>
-        </form>
-    );
-};
+        <BackToLoginLink disabled={isSubmitting} />
+    </form>
+);

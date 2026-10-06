@@ -1,180 +1,96 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useVerifyOtpMutation } from "../hooks/useVerifyOtpMutation";
-import { useResendOtpMutation } from "../hooks/useResendOtpMutation";
+import type { FormFeedback } from "@/components/FormFeedbackBanner";
+import { useOtpInput } from "../hooks/useOtpInput";
+import { useCountdown } from "../hooks/useCountdown";
+import { useForgotPasswordMutation, useVerifyOtpMutation } from "../hooks/usePasswordMutations";
+import type { ResetPasswordLocationState } from "../types";
 import { OtpVerificationForm } from "./OtpVerificationForm";
-import type { OtpFeedbackState } from "../types";
 
-interface OtpVerificationFormContainerProps {
+const OTP_LENGTH = 6;
+/** Khớp với thời gian chờ gửi lại OTP ở auth-service. */
+const RESEND_COOLDOWN_SECONDS = 60;
+
+export interface OtpVerificationFormContainerProps {
     readonly email: string;
 }
 
 export const OtpVerificationFormContainer = ({ email }: OtpVerificationFormContainerProps) => {
     const navigate = useNavigate();
-    const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
-    const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
-    const [cooldown, setCooldown] = useState<number>(60);
-    const [feedback, setFeedback] = useState<OtpFeedbackState | null>(null);
-
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
+    const [feedback, setFeedback] = useState<FormFeedback | null>(null);
+    const otp = useOtpInput(OTP_LENGTH);
+    const resendCountdown = useCountdown(RESEND_COOLDOWN_SECONDS);
     const verifyOtpMutation = useVerifyOtpMutation();
-    const resendOtpMutation = useResendOtpMutation();
+    const resendOtpMutation = useForgotPasswordMutation();
 
+    const { focusSlot } = otp;
     useEffect(() => {
-        inputRefs.current[0]?.focus();
-    }, []);
-
-    useEffect(() => {
-        if (cooldown <= 0) return;
-
-        const timer = setInterval(() => {
-            setCooldown((prev) => Math.max(0, prev - 1));
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [cooldown]);
-
-    const registerInputRef = (index: number, el: HTMLInputElement | null) => {
-        inputRefs.current[index] = el;
-    };
-
-    const handleOtpChange = (index: number, rawVal: string) => {
-        setFeedback(null);
-        const char = rawVal.slice(-1);
-
-        if (char && !/^\d$/.test(char)) {
-            return;
-        }
-
-        const newDigits = [...otpDigits];
-        newDigits[index] = char;
-        setOtpDigits(newDigits);
-
-        if (char && index < 5) {
-            inputRefs.current[index + 1]?.focus();
-            setActiveSlotIndex(index + 1);
-        }
-    };
-
-    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Backspace") {
-            if (!otpDigits[index] && index > 0) {
-                const newDigits = [...otpDigits];
-                newDigits[index - 1] = "";
-                setOtpDigits(newDigits);
-                inputRefs.current[index - 1]?.focus();
-                setActiveSlotIndex(index - 1);
-            } else {
-                const newDigits = [...otpDigits];
-                newDigits[index] = "";
-                setOtpDigits(newDigits);
-            }
-        } else if (e.key === "ArrowLeft" && index > 0) {
-            inputRefs.current[index - 1]?.focus();
-            setActiveSlotIndex(index - 1);
-        } else if (e.key === "ArrowRight" && index < 5) {
-            inputRefs.current[index + 1]?.focus();
-            setActiveSlotIndex(index + 1);
-        }
-    };
-
-    const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-        e.preventDefault();
-        setFeedback(null);
-
-        const pastedData = e.clipboardData.getData("text");
-        const digits = pastedData.replace(/\D/g, "").slice(0, 6);
-
-        if (!digits) return;
-
-        const newDigits = ["", "", "", "", "", ""];
-        for (let i = 0; i < digits.length; i++) {
-            newDigits[i] = digits[i];
-        }
-        setOtpDigits(newDigits);
-
-        const nextFocusIndex = Math.min(digits.length, 5);
-        inputRefs.current[nextFocusIndex]?.focus();
-        setActiveSlotIndex(nextFocusIndex);
-    };
-
-    const handleOtpFocus = (index: number) => {
-        setActiveSlotIndex(index);
-    };
+        focusSlot(0);
+    }, [focusSlot]);
 
     const handleSubmit = () => {
-        setFeedback(null);
-        const otpCode = otpDigits.join("");
-
-        if (otpCode.length < 6) {
+        if (!otp.isComplete) {
             setFeedback({
                 type: "error",
-                message: "Vui lòng nhập đủ 6 chữ số mã xác thực.",
+                message: `Vui lòng nhập đủ ${OTP_LENGTH} chữ số mã xác thực.`,
             });
             return;
         }
 
+        setFeedback(null);
         verifyOtpMutation.mutate(
+            { email, otp: otp.code },
             {
-                email,
-                otp: otpCode,
-            },
-            {
-                onSuccess: (res) => {
-                    const tokenParam = res.resetToken ? `&token=${encodeURIComponent(res.resetToken)}` : "";
-                    navigate(`/reset-password?email=${encodeURIComponent(email)}${tokenParam}`);
-                },
-                onError: (err) => {
-                    setFeedback({
-                        type: "error",
-                        message: err.message || "Mã xác thực không chính xác hoặc đã hết hiệu lực. Vui lòng kiểm tra lại.",
-                    });
-                },
+                // Truyền reset token qua history state thay vì URL để không lưu vào lịch sử trình duyệt
+                onSuccess: ({ resetToken }) =>
+                    navigate("/reset-password", {
+                        replace: true,
+                        state: { email, resetToken } satisfies ResetPasswordLocationState,
+                    }),
+                onError: (error) => setFeedback({ type: "error", message: error.message }),
             },
         );
     };
 
     const handleResend = () => {
-        if (cooldown > 0) return;
         setFeedback(null);
-
         resendOtpMutation.mutate(
             { email },
             {
-                onSuccess: (res) => {
-                    setCooldown(60);
-                    setOtpDigits(["", "", "", "", "", ""]);
-                    inputRefs.current[0]?.focus();
-                    setActiveSlotIndex(0);
+                onSuccess: () => {
+                    resendCountdown.restart();
+                    otp.reset();
                     setFeedback({
                         type: "success",
-                        message: res.message || "Mã xác thực mới đã được gửi tới email của bạn.",
+                        message: "Mã xác thực mới đã được gửi tới email của bạn.",
                     });
                 },
-                onError: (err) => {
-                    setFeedback({
-                        type: "error",
-                        message: err.message || "Không thể gửi lại mã xác thực. Vui lòng thử lại sau.",
-                    });
-                },
+                onError: (error) => setFeedback({ type: "error", message: error.message }),
             },
         );
     };
 
     return (
         <OtpVerificationForm
-            otpDigits={otpDigits}
-            activeSlotIndex={activeSlotIndex}
+            otpInput={{
+                digits: otp.digits,
+                activeIndex: otp.activeIndex,
+                onDigitChange: (index, value) => {
+                    setFeedback(null);
+                    otp.handleDigitChange(index, value);
+                },
+                onKeyDown: otp.handleKeyDown,
+                onPaste: (event) => {
+                    setFeedback(null);
+                    otp.handlePaste(event);
+                },
+                onFocus: otp.handleFocus,
+                registerInputRef: otp.registerInputRef,
+            }}
             feedback={feedback}
             isSubmitting={verifyOtpMutation.isPending}
             isResending={resendOtpMutation.isPending}
-            cooldown={cooldown}
-            onOtpChange={handleOtpChange}
-            onOtpKeyDown={handleOtpKeyDown}
-            onOtpPaste={handleOtpPaste}
-            onOtpFocus={handleOtpFocus}
-            registerInputRef={registerInputRef}
+            resendSecondsLeft={resendCountdown.secondsLeft}
             onSubmit={handleSubmit}
             onResend={handleResend}
             onClearFeedback={() => setFeedback(null)}

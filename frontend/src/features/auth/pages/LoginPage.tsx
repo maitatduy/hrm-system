@@ -1,31 +1,36 @@
 import { useSearchParams } from "react-router-dom";
-import { CheckCircle2 } from "lucide-react";
-import { AuthLayout } from "@/components/AuthLayout";
 import { AuthCard } from "@/components/AuthCard";
+import { AuthLayout } from "@/components/AuthLayout";
+import { FormFeedbackBanner } from "@/components/FormFeedbackBanner";
 import { AuthHeader } from "../components/AuthHeader";
 import { LoginFormContainer } from "../components/LoginFormContainer";
+import type { LoginRedirectReason } from "../types";
+
+const REASON_MESSAGES: Record<LoginRedirectReason, string> = {
+    logged_out: "Bạn đã đăng xuất khỏi phiên làm việc thành công.",
+    password_reset: "Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.",
+    password_changed: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.",
+};
+
+const isLoginRedirectReason = (value: string | null): value is LoginRedirectReason =>
+    value !== null && value in REASON_MESSAGES;
 
 export const LoginPage = () => {
     const [searchParams] = useSearchParams();
-    const isLoggedOut = searchParams.get("reason") === "logged_out";
+    const reason = searchParams.get("reason");
 
     return (
         <AuthLayout>
+            <title>Đăng nhập - HRM System</title>
             <AuthCard>
-                <AuthHeader />
-
-                {isLoggedOut && (
-                    <div className="mb-4 p-3 bg-[#1aae39]/10 border border-[#1aae39]/30 rounded-xs flex items-center gap-2.5 text-[#1aae39] text-[13px] font-medium animate-in fade-in">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        <span>Bạn đã đăng xuất khỏi phiên làm việc thành công.</span>
-                    </div>
+                <AuthHeader title="Đăng nhập" />
+                {isLoginRedirectReason(reason) && (
+                    <FormFeedbackBanner
+                        feedback={{ type: "success", message: REASON_MESSAGES[reason] }}
+                    />
                 )}
-
                 <LoginFormContainer />
             </AuthCard>
         </AuthLayout>
     );
 };
-
-export default LoginPage;
-

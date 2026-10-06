@@ -11,10 +11,13 @@
     --radius-full: 9999px;
 
     --color-primary: #0075de;
+    --color-primary-hover: #0060b8;
     --color-primary-active: #005bab;
     --color-canvas-soft: #f6f5f4;
+    --color-canvas-warm: #f9f2ed;
     --color-surface: #ffffff;
     --color-hairline: #e6e6e6;
+    --color-hairline-strong: #cccccc;
     --color-ink: #000000;
     --color-ink-secondary: #31302e;
     --color-ink-muted: #615d59;
@@ -22,13 +25,17 @@
     --color-accent-green: #1aae39;
     --color-accent-orange: #dd5b00;
     --color-accent-danger: #dc2626;
+    --color-accent-danger-hover: #b91c1c;
+    --color-accent-danger-active: #991b1b;
+    --color-avatar: #d5e3ff;
+    --color-avatar-ink: #005db2;
 }
 
 @layer base {
     body {
         font-family: var(--font-sans);
-        background-color: #f6f5f4;
-        color: #000000;
+        background-color: var(--color-canvas-soft);
+        color: var(--color-ink);
         min-height: 100vh;
         margin: 0;
         -webkit-font-smoothing: antialiased;
