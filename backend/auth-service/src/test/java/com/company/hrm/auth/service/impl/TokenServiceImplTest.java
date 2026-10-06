@@ -146,6 +146,49 @@ class TokenServiceImplTest {
     }
 
     @Nested
+    class TokenType {
+
+        private TokenPair tokens;
+
+        @BeforeEach
+        void issueTokens() {
+            tokens = tokenService.generateTokens(user, true);
+            clearInvocations(redisTemplate, valueOperations);
+        }
+
+        @Test
+        void accessTokenInRefreshCookieIsRejectedWithoutRevokingSessions() {
+            assertThatThrownBy(() -> tokenService.refreshToken(tokens.getAccessToken()))
+                    .isInstanceOf(UnauthorizedException.class)
+                    .hasMessage("Refresh token không hợp lệ hoặc đã hết hạn");
+
+            verify(redisTemplate, never()).delete(anyString());
+            verify(redisTemplate, never()).scan(any(ScanOptions.class));
+        }
+
+        @Test
+        void refreshTokenCannotBeBlacklistedAsAccessToken() {
+            tokenService.blacklistAccessToken(tokens.getRefreshToken());
+
+            verify(valueOperations, never()).set(startsWith("auth:blacklist:"), anyString(), anyLong(), any(TimeUnit.class));
+        }
+
+        @Test
+        void accessTokenCannotRevokeRefreshSession() {
+            tokenService.revokeRefreshToken(tokens.getAccessToken());
+
+            verify(redisTemplate, never()).delete(any(java.util.Collection.class));
+        }
+
+        @Test
+        void blacklistsAccessToken() {
+            tokenService.blacklistAccessToken(tokens.getAccessToken());
+
+            verify(valueOperations).set(startsWith("auth:blacklist:"), eq("revoked"), anyLong(), eq(TimeUnit.MILLISECONDS));
+        }
+    }
+
+    @Nested
     class RememberMe {
 
         private static final long REMEMBER_TTL_MS = 604_800_000L;

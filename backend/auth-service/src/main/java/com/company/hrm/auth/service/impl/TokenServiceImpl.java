@@ -9,11 +9,11 @@ import com.company.hrm.auth.exception.TooManyRequestsException;
 import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
+import com.company.hrm.auth.security.JwtTokens;
 import com.company.hrm.auth.service.TokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +23,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -72,9 +71,22 @@ public class TokenServiceImpl implements TokenService {
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final Duration REFRESH_REUSE_GRACE = Duration.ofSeconds(10);
 
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+    private Claims parseAccessToken(String token) {
+        return Jwts.parser()
+                .verifyWith(JwtTokens.accessKey(jwtSecret))
+                .require(JwtTokens.TYPE_CLAIM, JwtTokens.ACCESS_TYPE)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    private Claims parseRefreshToken(String token) {
+        return Jwts.parser()
+                .verifyWith(JwtTokens.refreshKey(jwtSecret))
+                .require(JwtTokens.TYPE_CLAIM, JwtTokens.REFRESH_TYPE)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     @Override
@@ -92,11 +104,8 @@ public class TokenServiceImpl implements TokenService {
 
         Claims claims;
         try {
-            claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(refreshToken)
-                    .getPayload();
+            // Access token đặt vào cookie refresh bị từ chối ở đây, trước khi chạm tới logic phát hiện dùng lại
+            claims = parseRefreshToken(refreshToken);
         } catch (JwtException e) {
             throw new UnauthorizedException("Refresh token không hợp lệ hoặc đã hết hạn");
         }
@@ -154,11 +163,7 @@ public class TokenServiceImpl implements TokenService {
         String token = accessToken.startsWith("Bearer ") ? accessToken.substring(7) : accessToken;
 
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+            Claims claims = parseAccessToken(token);
 
             String jti = claims.getId();
             Date expiration = claims.getExpiration();
@@ -185,11 +190,7 @@ public class TokenServiceImpl implements TokenService {
         }
 
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(refreshToken)
-                    .getPayload();
+            Claims claims = parseRefreshToken(refreshToken);
 
             String userIdStr = claims.getSubject();
             String jti = claims.getId();
@@ -289,12 +290,13 @@ public class TokenServiceImpl implements TokenService {
         return Jwts.builder()
                 .id(jti)
                 .subject(user.getId().toString())
+                .claim(JwtTokens.TYPE_CLAIM, JwtTokens.ACCESS_TYPE)
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
                 .claim("employeeId", user.getEmployeeId() != null ? user.getEmployeeId().toString() : null)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(getSigningKey())
+                .signWith(JwtTokens.accessKey(jwtSecret))
                 .compact();
     }
 
@@ -307,10 +309,11 @@ public class TokenServiceImpl implements TokenService {
         String token = Jwts.builder()
                 .id(jti)
                 .subject(user.getId().toString())
+                .claim(JwtTokens.TYPE_CLAIM, JwtTokens.REFRESH_TYPE)
                 .claim(REMEMBER_ME_CLAIM, rememberMe)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(getSigningKey())
+                .signWith(JwtTokens.refreshKey(jwtSecret))
                 .compact();
 
         String redisKey = refreshKey(user.getId().toString(), jti);
