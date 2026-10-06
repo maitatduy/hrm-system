@@ -13,11 +13,12 @@ DashboardLayout header
     │   ├── Link "Đổi mật khẩu" → /settings
     │   └── button "Đăng xuất"
     └── LogoutDialogContainer [SMART]
-        └── ConfirmDialog [DUMB] [SHARED UI]   "Đăng xuất?", Hủy / Đăng xuất
+        └── ConfirmDialog [DUMB] [SHARED UI]   tiêu đề, mô tả kèm email, Hủy / Đăng xuất
 ```
 
 - `UserMenu`: đóng menu khi bấm ra ngoài hoặc nhấn Esc.
 - `ConfirmDialog`: đóng khi nhấn Esc hoặc bấm nền phủ, trừ lúc đang xử lý. Khóa cuộn trang khi mở.
+- `LogoutDialogContainer`: lấy email từ `sessionUser` trong store, tiêu đề và mô tả lấy từ `AUTH_MESSAGES` (`LOGOUT_CONFIRM_TITLE`, `logoutConfirm(email)`, `LOGOUT_CONFIRM_DEFAULT` khi chưa có email).
 - `useLogoutMutation(reason)`: `POST /api/auth/logout`. Trong `onSettled` luôn `clearAuth()`, `queryClient.clear()` rồi điều hướng `/login?reason=<reason>`.
 
 ## 2. Quản lý trạng thái

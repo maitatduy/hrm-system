@@ -15,7 +15,7 @@
 ## 3. Đặc tả thiết kế
 
 - Menu tài khoản gồm email và vai trò ở đầu, mục "Đổi mật khẩu" và mục "Đăng xuất" chữ màu accent-danger. Không icon.
-- Hộp thoại xác nhận nhỏ, chỉ có tiêu đề "Đăng xuất?", nút "Hủy" secondary và nút "Đăng xuất" accent-danger. Không mô tả, không icon.
+- Hộp thoại xác nhận nhỏ: tiêu đề "Đăng xuất khỏi hệ thống?", một dòng mô tả nêu email của phiên sắp kết thúc và việc phải đăng nhập lại, nút "Hủy" secondary và nút "Đăng xuất" accent-danger. Không icon.
 - Nhấn Esc hoặc bấm ra ngoài để đóng menu và hộp thoại.
 - Sau khi đăng xuất, trang đăng nhập hiện banner "Đã đăng xuất".
 

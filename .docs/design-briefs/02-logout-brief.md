@@ -21,7 +21,7 @@ Nguồn: `.docs/ideas/02-logout-idea.md`, `.docs/frontend-plans/02-logout-plan.m
 
 ### ConfirmDialog [SHARED UI]
 - Khung nền `surface`, viền `hairline`, `rounded-lg`, đổ bóng `0 16px 36px rgba(0,0,0,0.14)`.
-- Tiêu đề 20px đậm 700 `ink`. Mô tả tùy chọn 15px `ink-muted`, hộp thoại đăng xuất không dùng.
+- Tiêu đề 20px đậm 700 `ink`. Mô tả 15px `ink-muted`, cách tiêu đề `mt-2`.
 - Nút "Hủy": secondary `h-11 rounded-md`, nền `surface`, viền `hairline`, hover `canvas-soft`.
 - Nút "Đăng xuất": danger `h-11 rounded-md`, chữ trắng, nền `accent-danger`, hover `accent-danger-hover`, active `accent-danger-active`. Khi xử lý chỉ hiện vòng quay.
 
@@ -35,7 +35,7 @@ Nguồn: `.docs/ideas/02-logout-idea.md`, `.docs/frontend-plans/02-logout-plan.m
 | `hairline` | `#e6e6e6` | viền menu, hộp thoại, nút hủy |
 | `canvas-soft` | `#f6f5f4` | hover mục menu, hover nút hủy |
 | `ink` | `#000000` | email, tiêu đề, mục "Đổi mật khẩu" |
-| `ink-muted` | `#615d59` | vai trò |
+| `ink-muted` | `#615d59` | vai trò, mô tả hộp thoại |
 | `accent-danger` | `#dc2626` | mục và nút "Đăng xuất" |
 | `accent-danger-hover` | `#b91c1c` | hover nút đăng xuất |
 | `accent-danger-active` | `#991b1b` | nhấn nút đăng xuất |
@@ -46,7 +46,12 @@ Nguồn: `.docs/ideas/02-logout-idea.md`, `.docs/frontend-plans/02-logout-plan.m
 {
   "user": { "email": "nguyenvana@hrm.vn", "initials": "NG", "roleLabel": "Nhân sự" },
   "menu": ["Đổi mật khẩu", "Đăng xuất"],
-  "dialog": { "title": "Đăng xuất?", "cancel": "Hủy", "confirm": "Đăng xuất" },
+  "dialog": {
+    "title": "Đăng xuất khỏi hệ thống?",
+    "description": "Phiên làm việc của nguyenvana@hrm.vn sẽ kết thúc. Bạn sẽ cần đăng nhập lại để tiếp tục làm việc.",
+    "cancel": "Hủy",
+    "confirm": "Đăng xuất"
+  },
   "afterLogoutBanner": "Đã đăng xuất"
 }
 ```
