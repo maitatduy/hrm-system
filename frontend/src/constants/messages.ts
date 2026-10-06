@@ -19,6 +19,10 @@ export const AUTH_MESSAGES = {
     PASSWORD_CHANGED: "Đã đổi mật khẩu, vui lòng đăng nhập lại",
     SESSION_LOADING: "Đang tải...",
     SESSION_LOAD_FAILED: "Không tải được phiên đăng nhập",
+    LOGOUT_CONFIRM_TITLE: "Đăng xuất khỏi hệ thống?",
+    LOGOUT_CONFIRM_DEFAULT: "Bạn sẽ cần đăng nhập lại để tiếp tục làm việc.",
+    logoutConfirm: (email: string) =>
+        `Phiên làm việc của ${email} sẽ kết thúc. Bạn sẽ cần đăng nhập lại để tiếp tục làm việc.`,
 } as const;
 
 /** Lỗi dự phòng khi backend không trả về message. */
