@@ -43,6 +43,28 @@ Response lỗi dùng đúng chuẩn chung status, message, errors. Không trả 
 ## Trụ cột 3: giao tiếp giữa service và xử lý bất đồng bộ
 
 - Gọi sang employee-service qua OpenFeign để xác nhận employeeId tồn tại khi tạo tài khoản, và để lấy tên cùng phòng ban khi hiển thị danh sách tài khoản, có fallback Resilience4j trả về thông tin rút gọn nếu employee-service tạm thời lỗi.
-- Redis dùng cho ba việc, lưu refreshToken theo jti kèm TTL bằng thời gian sống của refresh token, lưu blacklist accessToken theo token kèm TTL bằng thời gian còn lại của access token, lưu mã OTP theo email kèm TTL khoảng năm đến mười phút, không lưu OTP trong MySQL vì đây là dữ liệu ngắn hạn.
-- Gửi email chứa mã OTP xử lý bất đồng bộ bằng @Async trong chính auth-service, không block request trả lời cho client, vì đây là tác vụ gửi một email đơn lẻ, chưa cần đẩy qua Kafka.
+- Redis dùng cho ba việc, lưu refreshToken theo jti kèm TTL bằng thời gian sống của refresh token, lưu blacklist accessToken theo token kèm TTL bằng thời gian còn lại của access token, lưu mã OTP theo email kèm TTL năm phút (`TokenService.OTP_TTL`), không lưu OTP trong MySQL vì đây là dữ liệu ngắn hạn.
+- OTP không lưu nguyên văn trong Redis mà lưu HMAC-SHA256 của chuỗi email và mã, khóa là `jwt.secret`. Người đọc được Redis cũng không biết mã và không dò ngược được nếu không có khóa.
+- Gửi email chứa mã OTP xử lý bất đồng bộ bằng @Async trong chính auth-service, không block request trả lời cho client, vì đây là tác vụ gửi một email đơn lẻ, chưa cần đẩy qua Kafka. Quyết định không tách notification-service ở giai đoạn này, sẽ tách khi các module khác cũng cần gửi thông báo, mọi chỗ gọi đi qua interface `EmailService` để đổi cài đặt dễ dàng.
 - Không publish event nào ra ngoài cho module này ở giai đoạn đầu.
+
+## Gửi email OTP
+
+- Gửi qua SMTP bằng `JavaMailSender` (spring-boot-starter-mail), nội dung dựng từ template Thymeleaf `templates/mail/otp-code.html`, kèm bản chữ thuần cho trình đọc mail không hỗ trợ HTML.
+- Tiêu đề "Mã xác thực HRM System", nội dung gồm mã sáu số, thời hạn năm phút và lời nhắc bỏ qua nếu không phải người dùng yêu cầu. Không kèm link.
+- Chạy trên thread pool riêng `mailTaskExecutor` (2 đến 4 luồng, hàng đợi 200) để SMTP chậm không ảnh hưởng tác vụ khác.
+- Thử lại tối đa ba lần, chờ tăng dần giữa các lần (`app.mail.retry-backoff-ms`, mặc định 2 giây). Hết lượt thì chỉ ghi log lỗi, API forgot-password vẫn trả kết quả chung chung như cũ.
+- Không bao giờ ghi mã OTP ra log, email người nhận được che bớt khi ghi log.
+- Cấu hình qua biến môi trường:
+
+| Biến | Ý nghĩa | Dev (Mailpit) |
+| :-- | :-- | :-- |
+| `SPRING_MAIL_HOST` | máy chủ SMTP | `localhost` |
+| `SPRING_MAIL_PORT` | cổng SMTP | `1025` |
+| `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | tài khoản SMTP | để trống |
+| `SPRING_MAIL_SMTP_AUTH` | bật xác thực SMTP | `false` |
+| `SPRING_MAIL_SMTP_STARTTLS_ENABLE` | bật STARTTLS | `false` |
+| `MAIL_FROM`, `MAIL_FROM_NAME` | người gửi | `no-reply@hrm.local`, `HRM System` |
+
+- Môi trường dev dùng Mailpit để bắt toàn bộ email, xem tại giao diện web cổng 8025. Môi trường thật dùng nhà cung cấp SMTP như Brevo, SendGrid hoặc Amazon SES, có bật xác thực và STARTTLS.
+- Test: unit test thử lại bằng `JavaMailSender` giả lập, test gửi thật qua GreenMail chạy trong JUnit.

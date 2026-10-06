@@ -19,6 +19,7 @@
 - [x] **Thi công Backend api-gateway**: Khởi tạo module api-gateway, cấu hình routing sang auth-service, thiết lập CORS cho phép frontend localhost:5173 và hỗ trợ credentials cho HttpOnly cookie.
 - [x] **Thi công Backend discovery-server**: Khởi tạo discovery-server (Eureka Server cổng 8761), cấu hình toàn bộ 7 service còn lại thành Eureka Client tự động đăng ký vào registry.
 - [x] **Thi công Backend config-server**: Khởi tạo config-server (Spring Cloud Config cổng 8888) dùng profile native, cấu hình kho lưu trữ file cấu hình local cho tất cả microservices.
+- [x] **Gửi OTP qua email (auth-service)**: Gửi mã OTP quên mật khẩu qua SMTP bằng JavaMailSender và template Thymeleaf, thread pool riêng, thử lại 3 lần, không ghi OTP ra log, lưu OTP dạng HMAC trong Redis, test bằng GreenMail.
 
 ---
 
@@ -34,3 +35,4 @@
 - **[2026-10-04 18:14]**: Khởi tạo module api-gateway, cấu hình routing, thiết lập CORS (hỗ trợ credentials) và chuẩn hóa file cấu hình .env cho toàn bộ backend.
 - **[2026-10-04 18:56]**: Hoàn thành discovery-server (Eureka Server) và config-server (Spring Cloud Config native profile), chuẩn hóa cấu hình Eureka Client và biến môi trường cho 7 microservices.
 - **[2026-10-06 11:14]**: Tối giản giao diện các màn xác thực (bỏ logo, mô tả, placeholder, icon trang trí, danh sách yêu cầu mật khẩu), gom message vào `frontend/src/constants/messages.ts`, cập nhật lại ideas, frontend plans và design briefs 00 đến 05 theo đúng code hiện tại.
+- **[2026-10-06 11:57]**: Triển khai gửi OTP qua email trong auth-service (không tách notification-service ở giai đoạn này), cấu hình SMTP qua biến môi trường, dev dùng Mailpit, cập nhật `00-auth-service-plan.md`.
