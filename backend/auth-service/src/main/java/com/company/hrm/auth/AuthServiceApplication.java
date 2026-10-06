@@ -7,6 +7,8 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.scheduling.annotation.EnableAsync;
 
+import java.util.TimeZone;
+
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients
@@ -15,6 +17,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 public class AuthServiceApplication {
 
     public static void main(String[] args) {
+        // Mọi thời gian ở backend lưu và trả về theo UTC, frontend tự chuyển sang múi giờ người dùng
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         SpringApplication.run(AuthServiceApplication.class, args);
     }
 }
