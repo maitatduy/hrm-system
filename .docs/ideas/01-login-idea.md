@@ -24,6 +24,7 @@
 ## 4. Dữ liệu cốt lõi
 
 - Email, mật khẩu, ghi nhớ đăng nhập.
-- Ghi nhớ bật: access token lưu localStorage, giữ qua lần mở trình duyệt sau. Tắt: lưu sessionStorage, mất khi đóng trình duyệt.
+- Ghi nhớ bật: giữ đăng nhập 7 ngày kể cả khi đóng mở lại trình duyệt. Access token lưu localStorage, refresh token là cookie lưu bền 7 ngày.
+- Ghi nhớ tắt: đóng trình duyệt là phải đăng nhập lại. Access token lưu sessionStorage, refresh token là cookie phiên và tối đa sống 1 ngày ở backend.
 - Sau khi đăng nhập, về trang trong tham số `?redirect` nếu là đường dẫn nội bộ an toàn, nếu không thì về trang chủ theo vai trò.
 - Người đã đăng nhập vào `/login` sẽ được chuyển đi ngay.
