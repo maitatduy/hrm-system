@@ -19,10 +19,16 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         type:
           preferred_uuid_jdbc_type: VARCHAR
+        jdbc:
+          time_zone: UTC
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED}
     locations: ${SPRING_FLYWAY_LOCATIONS}
     baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE}
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST}
