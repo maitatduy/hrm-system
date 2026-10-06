@@ -21,11 +21,6 @@ export const getSafeRedirectPath = (redirect: string | null): string | null => {
     return redirect;
 };
 
-export const getInitialsFromEmail = (email?: string): string => {
-    if (!email) return "NA";
-    return email.split("@")[0].slice(0, 2).toUpperCase();
-};
-
 /** Che bớt phần tên của email, ví dụ "nguyenvana@hrm.vn" thành "ng***a@hrm.vn". */
 export const maskEmail = (email: string): string => {
     const atIndex = email.lastIndexOf("@");
