@@ -12,6 +12,14 @@ spring:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
     show-sql: ${SPRING_JPA_SHOW_SQL}
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED}
     locations: ${SPRING_FLYWAY_LOCATIONS}
@@ -26,3 +34,4 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
+
