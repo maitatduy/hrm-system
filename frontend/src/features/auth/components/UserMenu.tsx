@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Avatar } from "@/components/Avatar";
 import { cn } from "@/lib/cn";
 import { useAuthStore } from "../store";
 import { LogoutDialogContainer } from "./LogoutDialogContainer";
-import { UserAvatar, UserIdentity } from "./UserAvatar";
+import { UserIdentity } from "./UserAvatar";
 
 const MENU_ITEM_CLASS_NAME =
     "block w-full px-4 py-2.5 text-[15px] text-left cursor-pointer transition-colors outline-none hover:bg-canvas-soft focus-visible:bg-canvas-soft";
@@ -43,7 +44,7 @@ export const UserMenu = () => {
                 aria-label="Tài khoản"
                 className="rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
-                <UserAvatar email={sessionUser?.email} />
+                <Avatar email={sessionUser?.email} />
             </button>
 
             {isMenuOpen && (
