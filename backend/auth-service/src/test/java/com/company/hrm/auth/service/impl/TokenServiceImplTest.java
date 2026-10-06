@@ -9,10 +9,12 @@ import com.company.hrm.auth.exception.TooManyRequestsException;
 import com.company.hrm.auth.exception.UnauthorizedException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
+import com.company.hrm.auth.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,6 +38,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -142,9 +145,29 @@ class TokenServiceImplTest {
     @Nested
     class VerifyOtp {
 
+        /** OTP được lưu dạng HMAC, lấy giá trị đã lưu thật qua storeOtp để dùng làm dữ liệu Redis giả. */
+        private String storedHashOf(String otp) {
+            tokenService.storeOtp(EMAIL, otp);
+            ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+            verify(valueOperations).set(eq("auth:otp:" + EMAIL), captor.capture(), any(Duration.class));
+            clearInvocations(valueOperations, redisTemplate);
+            return captor.getValue();
+        }
+
+        @Test
+        void storesOnlyAHashOfTheOtpAndResetsAttemptCounter() {
+            tokenService.storeOtp(EMAIL, "654321");
+
+            ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+            verify(valueOperations).set(eq("auth:otp:" + EMAIL), captor.capture(), eq(TokenService.OTP_TTL));
+            verify(redisTemplate).delete("auth:otp:attempts:" + EMAIL);
+            assertThat(captor.getValue()).doesNotContain("654321").hasSize(64);
+        }
+
         @Test
         void returnsResetTokenAndConsumesOtpWhenCodeMatches() {
-            when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn("123456");
+            String storedHash = storedHashOf("123456");
+            when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn(storedHash);
             when(redisTemplate.delete("auth:otp:" + EMAIL)).thenReturn(true);
 
             String resetToken = tokenService.verifyOtpAndGenerateResetToken(EMAIL, "123456");
@@ -155,7 +178,8 @@ class TokenServiceImplTest {
 
         @Test
         void countsFailedAttemptWhenCodeIsWrong() {
-            when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn("123456");
+            String storedHash = storedHashOf("123456");
+            when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn(storedHash);
             when(valueOperations.increment("auth:otp:attempts:" + EMAIL)).thenReturn(1L);
 
             assertThatThrownBy(() -> tokenService.verifyOtpAndGenerateResetToken(EMAIL, "000000"))
@@ -164,8 +188,18 @@ class TokenServiceImplTest {
         }
 
         @Test
-        void invalidatesOtpAfterTooManyWrongAttempts() {
+        void rejectsTheRawOtpIfItWasStoredWithoutHashing() {
             when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn("123456");
+            when(valueOperations.increment("auth:otp:attempts:" + EMAIL)).thenReturn(1L);
+
+            assertThatThrownBy(() -> tokenService.verifyOtpAndGenerateResetToken(EMAIL, "123456"))
+                    .isInstanceOf(BadRequestException.class);
+        }
+
+        @Test
+        void invalidatesOtpAfterTooManyWrongAttempts() {
+            String storedHash = storedHashOf("123456");
+            when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn(storedHash);
             when(valueOperations.increment("auth:otp:attempts:" + EMAIL)).thenReturn(5L);
 
             assertThatThrownBy(() -> tokenService.verifyOtpAndGenerateResetToken(EMAIL, "000000"))
@@ -175,19 +209,12 @@ class TokenServiceImplTest {
 
         @Test
         void rejectsWhenOtpAlreadyConsumedByConcurrentRequest() {
-            when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn("123456");
+            String storedHash = storedHashOf("123456");
+            when(valueOperations.get("auth:otp:" + EMAIL)).thenReturn(storedHash);
             when(redisTemplate.delete("auth:otp:" + EMAIL)).thenReturn(false);
 
             assertThatThrownBy(() -> tokenService.verifyOtpAndGenerateResetToken(EMAIL, "123456"))
                     .isInstanceOf(BadRequestException.class);
-        }
-
-        @Test
-        void storingNewOtpResetsAttemptCounter() {
-            tokenService.storeOtp(EMAIL, "654321");
-
-            verify(valueOperations).set(eq("auth:otp:" + EMAIL), eq("654321"), any(Duration.class));
-            verify(redisTemplate).delete("auth:otp:attempts:" + EMAIL);
         }
     }
 }
