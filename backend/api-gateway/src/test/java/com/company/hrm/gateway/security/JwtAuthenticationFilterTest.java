@@ -124,6 +124,17 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    void replacesSpoofedClientIpWithTheConnectionAddress() {
+        run(MockServerHttpRequest.post("/api/auth/login")
+                .remoteAddress(new java.net.InetSocketAddress("203.0.113.7", 51000))
+                .header(JwtAuthenticationFilter.CLIENT_IP_HEADER, "1.2.3.4")
+                .build());
+
+        assertThat(forwarded.get().getRequest().getHeaders().get(JwtAuthenticationFilter.CLIENT_IP_HEADER))
+                .containsExactly("203.0.113.7");
+    }
+
+    @Test
     void publicAuthEndpointsPassWithoutTokenAndWithoutSpoofedHeaders() {
         run(MockServerHttpRequest.post("/api/auth/login")
                 .header(JwtAuthenticationFilter.USER_ROLE_HEADER, "ADMIN")

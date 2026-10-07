@@ -194,4 +194,15 @@ class GatewaySecurityIntegrationTest {
         assertThat(RECEIVED_PATHS).containsExactly("/api/auth/login");
         assertThat(LAST_HEADERS).doesNotContainKey("x-user-role");
     }
+
+    @Test
+    void loginReceivesTheRealClientIpEvenIfTheClientSpoofsIt() {
+        // Rate limit đăng nhập dựa vào IP này, client tự đặt IP khác để né giới hạn sẽ không có tác dụng
+        client.post().uri("/api/auth/login")
+                .header(JwtAuthenticationFilter.CLIENT_IP_HEADER, "1.2.3.4")
+                .exchange()
+                .expectStatus().isOk();
+
+        assertThat(LAST_HEADERS.get("x-client-ip")).isIn("127.0.0.1", "0:0:0:0:0:0:0:1");
+    }
 }

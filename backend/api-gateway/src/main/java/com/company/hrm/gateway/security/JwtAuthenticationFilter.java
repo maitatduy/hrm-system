@@ -17,14 +17,16 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.util.Set;
 
 /**
  * Xác thực access token cho mọi request đi qua route của gateway, trừ các đường công khai của auth-service.
  * Request hợp lệ được gắn danh tính đã xác thực vào header {@value #USER_ID_HEADER}, {@value #USER_ROLE_HEADER},
- * {@value #USER_EMAIL_HEADER} cho service phía sau; các header này do client tự gửi luôn bị xóa trước,
- * nên service không bao giờ nhận được danh tính giả. Header Authorization vẫn được chuyển tiếp để service tự kiểm tra lại.
+ * {@value #USER_EMAIL_HEADER} cho service phía sau, và mọi request được gắn {@value #CLIENT_IP_HEADER}. Các header
+ * này do client tự gửi luôn bị xóa trước, nên service không bao giờ nhận được danh tính hay IP giả.
+ * Header Authorization vẫn được chuyển tiếp để service tự kiểm tra lại.
  */
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
@@ -32,6 +34,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     public static final String USER_ID_HEADER = "X-User-Id";
     public static final String USER_ROLE_HEADER = "X-User-Role";
     public static final String USER_EMAIL_HEADER = "X-User-Email";
+    /** Khớp ClientIpResolver.CLIENT_IP_HEADER của auth-service. */
+    public static final String CLIENT_IP_HEADER = "X-Client-Ip";
 
     static final String MISSING_TOKEN_MESSAGE = "Bạn cần đăng nhập để thực hiện thao tác này";
     static final String EXPIRED_TOKEN_MESSAGE = "Access token đã hết hạn";
@@ -70,11 +74,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        String clientIp = clientIp(exchange.getRequest());
         ServerHttpRequest stripped = exchange.getRequest().mutate()
                 .headers(headers -> {
                     headers.remove(USER_ID_HEADER);
                     headers.remove(USER_ROLE_HEADER);
                     headers.remove(USER_EMAIL_HEADER);
+                    // IP thật cho rate limit đăng nhập ở auth-service, gắn cả cho đường công khai như login
+                    headers.remove(CLIENT_IP_HEADER);
+                    if (clientIp != null) {
+                        headers.set(CLIENT_IP_HEADER, clientIp);
+                    }
                 })
                 .build();
         ServerWebExchange strippedExchange = exchange.mutate().request(stripped).build();
@@ -142,6 +152,18 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 })
                 .build();
         return chain.filter(exchange.mutate().request(authenticated).build());
+    }
+
+    /**
+     * Địa chỉ của kết nối tới gateway, không đọc X-Forwarded-For do client có thể tự đặt. Nếu sau này gateway đứng
+     * sau load balancer, cần lấy IP thật từ X-Forwarded-For của load balancer tin cậy thay cho địa chỉ này.
+     */
+    private static String clientIp(ServerHttpRequest request) {
+        InetSocketAddress remote = request.getRemoteAddress();
+        if (remote == null || remote.getAddress() == null) {
+            return null;
+        }
+        return remote.getAddress().getHostAddress();
     }
 
     private static String resolveBearerToken(ServerHttpRequest request) {
