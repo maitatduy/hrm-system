@@ -68,8 +68,12 @@ public class AuthServiceImpl implements AuthService {
         return hash;
     }
 
+    /**
+     * Không đặt @Transactional: tìm user và ghi thời điểm đăng nhập đều tự chạy transaction của repository. Nếu login
+     * nằm trong transaction, entity user được quản lý và mọi thay đổi trên nó (kể cả lastLoginAt) bị lưu lại kèm
+     * auditing khi commit.
+     */
     @Override
-    @Transactional
     public LoginResponse login(LoginRequest request, String clientIp, HttpServletResponse response) {
         String email = request.getEmail().toLowerCase();
         // Chiếm suất trước khi chạy BCrypt: nhiều request song song không cùng lọt qua khi bộ đếm chưa kịp tăng
@@ -90,8 +94,11 @@ public class AuthServiceImpl implements AuthService {
             throw new ForbiddenException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.");
         }
 
-        user.setLastLoginAt(LocalDateTime.now());
-        userRepository.save(user);
+        // Không lưu cả entity: đăng nhập không phải sửa tài khoản, lưu entity sẽ để auditing ghi đè updated_by thành
+        // "system" và xóa mất thông tin ai sửa tài khoản lần cuối. Gán vào entity (đã detached) chỉ để response có giá trị mới.
+        LocalDateTime loginAt = LocalDateTime.now();
+        userRepository.updateLastLoginAt(user.getId(), loginAt);
+        user.setLastLoginAt(loginAt);
 
         TokenPair tokenPair = tokenService.generateTokens(user, request.isRememberMe());
         addRefreshTokenCookie(response, tokenPair);

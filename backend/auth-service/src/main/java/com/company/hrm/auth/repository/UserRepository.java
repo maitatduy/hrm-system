@@ -9,10 +9,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +30,16 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     boolean existsByEmployeeId(UUID employeeId);
 
     boolean existsByRoleAndStatus(Role role, UserStatus status);
+
+    /**
+     * Ghi thời điểm đăng nhập mà không đổi updated_at, updated_by: đăng nhập không phải là sửa tài khoản, và chưa có ai
+     * trong SecurityContext nên auditing sẽ ghi đè người sửa thật bằng "system". JPQL UPDATE không qua entity listener;
+     * gán updated_at bằng chính nó để MySQL không tự cập nhật cột này (ON UPDATE CURRENT_TIMESTAMP trong migration V1).
+     */
+    @Transactional
+    @Modifying
+    @Query("UPDATE User u SET u.lastLoginAt = :lastLoginAt, u.updatedAt = u.updatedAt WHERE u.id = :id")
+    int updateLastLoginAt(@Param("id") UUID id, @Param("lastLoginAt") LocalDateTime lastLoginAt);
 
     /**
      * Khóa các dòng tìm được tới hết transaction (SELECT ... FOR UPDATE), để hai thao tác đồng thời không cùng

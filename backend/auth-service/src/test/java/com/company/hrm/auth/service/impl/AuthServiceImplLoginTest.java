@@ -26,6 +26,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -95,6 +97,22 @@ class AuthServiceImplLoginTest {
         assertThat(response.getHeader("Set-Cookie")).contains("refreshToken=refresh", "HttpOnly", "Max-Age=604800");
         verify(rateLimitService).consumeLoginAttempt(EMAIL, CLIENT_IP);
         verify(rateLimitService).releaseLoginAttempt(EMAIL, CLIENT_IP);
+    }
+
+    @Test
+    void loginRecordsTheTimeWithoutSavingTheWholeAccount() {
+        // Lưu cả entity sẽ để auditing ghi đè updated_by thành "system", xóa mất người sửa tài khoản lần cuối
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, "hash")).thenReturn(true);
+        when(tokenService.generateTokens(any(), anyBoolean())).thenReturn(TokenPair.builder()
+                .accessToken("access").refreshToken("refresh").build());
+
+        authService.login(new LoginRequest(EMAIL, PASSWORD, false), CLIENT_IP, new MockHttpServletResponse());
+
+        verify(userRepository).updateLastLoginAt(eq(user.getId()), any(LocalDateTime.class));
+        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
+        assertThat(user.getLastLoginAt()).isNotNull();
     }
 
     @Test
