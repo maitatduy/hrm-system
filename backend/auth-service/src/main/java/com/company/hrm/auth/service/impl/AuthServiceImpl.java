@@ -72,23 +72,24 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public LoginResponse login(LoginRequest request, String clientIp, HttpServletResponse response) {
         String email = request.getEmail().toLowerCase();
-        rateLimitService.checkLoginAllowed(email, clientIp);
+        // Chiếm suất trước khi chạy BCrypt: nhiều request song song không cùng lọt qua khi bộ đếm chưa kịp tăng
+        rateLimitService.consumeLoginAttempt(email, clientIp);
 
         User user = userRepository.findByEmail(email).orElse(null);
         // Email không tồn tại vẫn chạy BCrypt với hash giả để thời gian phản hồi không lộ email nào đã đăng ký
         String hashToCheck = user != null ? user.getPasswordHash() : dummyPasswordHash();
         boolean passwordMatches = passwordEncoder.matches(request.getPassword(), hashToCheck);
         if (user == null || !passwordMatches) {
-            rateLimitService.recordLoginFailure(email, clientIp);
+            // Suất đã chiếm được giữ lại, đó chính là lần đăng nhập sai được đếm
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
         }
+        rateLimitService.releaseLoginAttempt(email, clientIp);
 
         // Chỉ báo trạng thái khóa khi đã đúng mật khẩu, tránh lộ trạng thái tài khoản cho người lạ
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new ForbiddenException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.");
         }
 
-        rateLimitService.resetLoginFailures(email, clientIp);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
