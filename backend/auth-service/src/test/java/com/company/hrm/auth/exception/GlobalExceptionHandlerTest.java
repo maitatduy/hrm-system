@@ -3,11 +3,16 @@ package com.company.hrm.auth.exception;
 import com.company.hrm.auth.dto.response.ApiResponse;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.sql.SQLException;
@@ -92,6 +97,24 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(ex);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void validationErrorsAtClassLevelDoNotCrashTheHandler() throws Exception {
+        // Ràng buộc cấp class (ví dụ "mật khẩu nhập lại phải khớp") sinh ObjectError chứ không phải FieldError
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "resetPasswordRequest");
+        bindingResult.addError(new FieldError("resetPasswordRequest", "newPassword", "Mật khẩu yếu"));
+        bindingResult.addError(new ObjectError("resetPasswordRequest", "Mật khẩu nhập lại không khớp"));
+        MethodParameter parameter = new MethodParameter(
+                GlobalExceptionHandlerTest.class.getDeclaredMethod("validationErrorsAtClassLevelDoNotCrashTheHandler"), -1);
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleValidationExceptions(
+                new MethodArgumentNotValidException(parameter, bindingResult));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getErrors())
+                .containsEntry("newPassword", "Mật khẩu yếu")
+                .containsEntry("resetPasswordRequest", "Mật khẩu nhập lại không khớp");
     }
 
     @Test
