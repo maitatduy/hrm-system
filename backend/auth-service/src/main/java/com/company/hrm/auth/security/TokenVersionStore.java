@@ -7,9 +7,12 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Phiên bản token theo từng user. Access token mang phiên bản lúc được cấp (claim {@value #CLAIM}), filter từ chối
- * token có phiên bản khác phiên bản hiện tại. Tăng phiên bản là thu hồi ngay mọi access token đã cấp của user,
- * dùng khi khóa tài khoản, đổi role, đổi hoặc đặt lại mật khẩu.
+ * Phiên bản token theo từng user. Access token và refresh token mang phiên bản lúc được cấp (claim {@value #CLAIM}),
+ * filter và endpoint refresh từ chối token có phiên bản khác phiên bản hiện tại. Tăng phiên bản là thu hồi ngay mọi
+ * token đã cấp của user, dùng khi khóa tài khoản, đổi role, đổi hoặc đặt lại mật khẩu.
+ * <p>
+ * Chỉ auth-service kiểm tra được phiên bản vì cần đọc Redis. Nếu sau này api-gateway tự xác thực JWT, gateway phải
+ * đọc cùng key Redis này, hoặc vẫn chuyển request qua auth-service để kiểm tra, nếu không token đã thu hồi vẫn lọt.
  * <p>
  * Key không có TTL: nếu key hết hạn, phiên bản quay về 0 và các token cấp sau lần tăng trước đó sẽ bị từ chối oan.
  * Mất dữ liệu Redis cũng làm mất refresh token và blacklist, nên người dùng phải đăng nhập lại, cùng mức rủi ro
@@ -20,6 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class TokenVersionStore {
 
     public static final String CLAIM = "token_version";
+    public static final String REVOKED_MESSAGE = "Phiên đăng nhập đã hết hiệu lực, vui lòng đăng nhập lại";
     private static final String KEY_PREFIX = "auth:token-version:";
 
     private final StringRedisTemplate redisTemplate;

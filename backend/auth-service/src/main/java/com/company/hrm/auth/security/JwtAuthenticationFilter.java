@@ -59,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 } else if (claims.getSubject() == null
                         || !tokenVersionStore.matches(claims.getSubject(), claims.get(TokenVersionStore.CLAIM, Number.class))) {
                     // Tài khoản đã bị khóa, đổi role hoặc đổi mật khẩu sau khi token được cấp
-                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, "Phiên đăng nhập đã hết hiệu lực, vui lòng đăng nhập lại");
+                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, TokenVersionStore.REVOKED_MESSAGE);
                 } else {
                     authenticate(request, claims);
                 }

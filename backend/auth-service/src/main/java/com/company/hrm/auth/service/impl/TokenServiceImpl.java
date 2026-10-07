@@ -93,6 +93,13 @@ public class TokenServiceImpl implements TokenService {
             throw new UnauthorizedException("Token không hợp lệ");
         }
 
+        // Phiên đã bị thu hồi chính thức (khóa, đổi role, đổi mật khẩu): refresh token cũ bị xóa khỏi Redis là đúng
+        // thiết kế, không phải dấu hiệu tấn công, nên từ chối luôn và không chạy logic phát hiện dùng lại.
+        // Kiểm tra này cũng chặn refresh token được ghi vào Redis sau khi revokeAllUserTokens đã quét xong.
+        if (!tokenVersionStore.matches(userIdStr, claims.get(TokenVersionStore.CLAIM, Number.class))) {
+            throw new UnauthorizedException(TokenVersionStore.REVOKED_MESSAGE);
+        }
+
         // DEL là thao tác atomic: chỉ đúng một request được "tiêu thụ" refresh token này
         String redisKey = refreshKey(userIdStr, jti);
         String graceKey = refreshGraceKey(userIdStr, jti);
@@ -294,6 +301,7 @@ public class TokenServiceImpl implements TokenService {
                 .id(jti)
                 .subject(user.getId().toString())
                 .claim(JwtTokens.TYPE_CLAIM, JwtTokens.REFRESH_TYPE)
+                .claim(TokenVersionStore.CLAIM, tokenVersionStore.current(user.getId().toString()))
                 .claim(REMEMBER_ME_CLAIM, rememberMe)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
