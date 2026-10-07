@@ -23,7 +23,7 @@ GuestRoute [SMART]
 ```
 
 - `LoginFormContainer`: React Hook Form + `loginFormSchema` (zod), gọi `useLoginMutation`. Không tự điều hướng, `GuestRoute` chuyển trang khi `isAuthenticated` thành true.
-- `useLoginMutation`: `POST /api/auth/login` kèm `rememberMe`, thành công thì `setAuth` (lưu token theo ghi nhớ) và ghi cache `["auth", "me"]`. Backend dựa vào `rememberMe` để trả cookie refresh token lưu bền 7 ngày hoặc cookie phiên.
+- `useLoginMutation`: `POST /api/auth/login` kèm `rememberMe`, thành công thì `setAuth` (giữ access token trong bộ nhớ) và ghi cache `["auth", "me"]`. Backend dựa vào `rememberMe` để trả cookie refresh token lưu bền 7 ngày hoặc cookie phiên.
 - `LoginPage`: đọc `?reason` (`logged_out`, `password_reset`, `password_changed`) để hiện banner, nội dung lấy từ `AUTH_MESSAGES` trong `src/constants/messages.ts`.
 
 ## 2. Quản lý trạng thái
@@ -33,7 +33,7 @@ GuestRoute [SMART]
 | Giá trị form, lỗi validate | React Hook Form | |
 | Lỗi từ server | `useState<string \| null>` | đóng được |
 | Trạng thái gửi | `useMutation().isPending` | khóa form, nút chỉ hiện vòng quay |
-| Phiên đăng nhập | Zustand | localStorage nếu ghi nhớ, sessionStorage nếu không |
+| Phiên đăng nhập | Zustand | access token chỉ trong bộ nhớ, không ghi Web Storage; tải lại trang thì `restoreSession` gọi refresh bằng cookie HttpOnly, trạng thái `restoring` khiến `ProtectedRoute` và `GuestRoute` chờ |
 | `reason`, `redirect` | URL query | |
 
 ## 3. Cấu trúc dữ liệu
