@@ -19,10 +19,11 @@ import org.thymeleaf.context.Context;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Gửi email OTP qua SMTP. Không bao giờ ghi mã OTP ra log, email người nhận được che bớt khi log.
+ * Gửi email qua SMTP. Không bao giờ ghi mã OTP hay mật khẩu ra log, email người nhận được che bớt khi log.
  */
 @Slf4j
 @Service
@@ -30,7 +31,9 @@ import java.util.concurrent.CompletableFuture;
 public class EmailServiceImpl implements EmailService {
 
     static final String OTP_SUBJECT = "Mã xác thực HRM System";
+    static final String ACCOUNT_CREATED_SUBJECT = "Tài khoản HRM System của bạn";
     private static final String OTP_TEMPLATE = "mail/otp-code";
+    private static final String ACCOUNT_CREATED_TEMPLATE = "mail/account-created";
     private static final int MAX_SEND_ATTEMPTS = 3;
 
     private final JavaMailSender mailSender;
@@ -48,18 +51,78 @@ public class EmailServiceImpl implements EmailService {
     @Async(AsyncConfig.MAIL_TASK_EXECUTOR)
     @Override
     public CompletableFuture<Void> sendOtpEmailAsync(String toEmail, String otp) {
-        String maskedEmail = maskEmail(toEmail);
+        long validityMinutes = TokenService.OTP_TTL.toMinutes();
+        String text = """
+                Mã xác thực HRM System của bạn là: %s
+
+                Mã có hiệu lực trong %d phút. Không chia sẻ mã này với bất kỳ ai.
+                Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.
+                """.formatted(otp, validityMinutes);
+
+        return sendWithRetry(new MailContent(
+                "email OTP",
+                toEmail,
+                OTP_SUBJECT,
+                OTP_TEMPLATE,
+                Map.of("otp", otp, "validityMinutes", validityMinutes),
+                text
+        ));
+    }
+
+    @Async(AsyncConfig.MAIL_TASK_EXECUTOR)
+    @Override
+    public CompletableFuture<Void> sendAccountCreatedEmailAsync(String toEmail, String temporaryPassword) {
+        String text = """
+                Tài khoản HRM System của bạn đã được tạo.
+
+                Email đăng nhập: %s
+                Mật khẩu tạm thời: %s
+
+                Hãy đăng nhập và đổi mật khẩu ngay trong mục Cài đặt. Không chia sẻ mật khẩu này với bất kỳ ai.
+                Nếu bạn không mong đợi email này, hãy liên hệ bộ phận Nhân sự.
+                """.formatted(toEmail, temporaryPassword);
+
+        return sendWithRetry(new MailContent(
+                "email tạo tài khoản",
+                toEmail,
+                ACCOUNT_CREATED_SUBJECT,
+                ACCOUNT_CREATED_TEMPLATE,
+                Map.of("email", toEmail, "temporaryPassword", temporaryPassword),
+                text
+        ));
+    }
+
+    /**
+     * Nội dung một email, {@code kind} chỉ dùng để ghi log. {@code variables} và {@code plainText} chứa OTP
+     * hoặc mật khẩu tạm, nên toString chỉ in loại email và địa chỉ đã che.
+     */
+    record MailContent(
+            String kind,
+            String toEmail,
+            String subject,
+            String template,
+            Map<String, Object> variables,
+            String plainText
+    ) {
+        @Override
+        public String toString() {
+            return "MailContent[kind=" + kind + ", to=" + maskEmail(toEmail) + "]";
+        }
+    }
+
+    private CompletableFuture<Void> sendWithRetry(MailContent content) {
+        String maskedEmail = maskEmail(content.toEmail());
 
         for (int attempt = 1; attempt <= MAX_SEND_ATTEMPTS; attempt++) {
             try {
-                mailSender.send(buildOtpMessage(toEmail, otp));
-                log.info("Đã gửi email OTP tới {}", maskedEmail);
+                mailSender.send(buildMessage(content));
+                log.info("Đã gửi {} tới {}", content.kind(), maskedEmail);
                 return CompletableFuture.completedFuture(null);
             } catch (MailException | MessagingException | UnsupportedEncodingException e) {
-                log.warn("Gửi email OTP tới {} thất bại lần {}/{}: {}",
-                        maskedEmail, attempt, MAX_SEND_ATTEMPTS, e.getMessage());
+                log.warn("Gửi {} tới {} thất bại lần {}/{}: {}",
+                        content.kind(), maskedEmail, attempt, MAX_SEND_ATTEMPTS, e.getMessage());
                 if (attempt == MAX_SEND_ATTEMPTS) {
-                    log.error("Bỏ qua gửi email OTP tới {} sau {} lần thử", maskedEmail, MAX_SEND_ATTEMPTS);
+                    log.error("Bỏ qua gửi {} tới {} sau {} lần thử", content.kind(), maskedEmail, MAX_SEND_ATTEMPTS);
                     return CompletableFuture.failedFuture(e);
                 }
                 if (!waitBeforeRetry(attempt)) {
@@ -70,27 +133,17 @@ public class EmailServiceImpl implements EmailService {
         return CompletableFuture.completedFuture(null);
     }
 
-    private MimeMessage buildOtpMessage(String toEmail, String otp)
-            throws MessagingException, UnsupportedEncodingException {
-        long validityMinutes = TokenService.OTP_TTL.toMinutes();
-
+    private MimeMessage buildMessage(MailContent content) throws MessagingException, UnsupportedEncodingException {
         Context context = new Context(Locale.forLanguageTag("vi"));
-        context.setVariable("otp", otp);
-        context.setVariable("validityMinutes", validityMinutes);
-        String html = templateEngine.process(OTP_TEMPLATE, context);
-        String text = """
-                Mã xác thực HRM System của bạn là: %s
-
-                Mã có hiệu lực trong %d phút. Không chia sẻ mã này với bất kỳ ai.
-                Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.
-                """.formatted(otp, validityMinutes);
+        context.setVariables(content.variables());
+        String html = templateEngine.process(content.template(), context);
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
         helper.setFrom(fromAddress, fromName);
-        helper.setTo(toEmail);
-        helper.setSubject(OTP_SUBJECT);
-        helper.setText(text, html);
+        helper.setTo(content.toEmail());
+        helper.setSubject(content.subject());
+        helper.setText(content.plainText(), html);
         return message;
     }
 

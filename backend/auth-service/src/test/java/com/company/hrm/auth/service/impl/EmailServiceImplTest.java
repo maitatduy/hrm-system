@@ -75,6 +75,43 @@ class EmailServiceImplTest {
             assertThat(body).contains(OTP).contains("5 ph");
             assertThat(body).contains("text/plain").contains("text/html");
         }
+
+        @Test
+        void sendsAccountCreatedEmailWithLoginEmailAndTemporaryPassword() throws Exception {
+            JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+            mailSender.setHost("localhost");
+            mailSender.setPort(greenMail.getSmtp().getPort());
+            String temporaryPassword = "Kp7#mQ2xVr9$tLw4";
+
+            emailService(mailSender).sendAccountCreatedEmailAsync(RECIPIENT, temporaryPassword).get();
+
+            MimeMessage[] received = greenMail.getReceivedMessages();
+            assertThat(received).hasSize(1);
+            MimeMessage message = received[0];
+            assertThat(message.getSubject()).isEqualTo(EmailServiceImpl.ACCOUNT_CREATED_SUBJECT);
+            assertThat(message.getAllRecipients()[0].toString()).isEqualTo(RECIPIENT);
+
+            String body = GreenMailUtil.getBody(message);
+            assertThat(body).contains(RECIPIENT).contains(temporaryPassword);
+            assertThat(body).contains("text/plain").contains("text/html");
+        }
+    }
+
+    @Test
+    void mailContentNeverPrintsSecretsOrFullRecipient() {
+        EmailServiceImpl.MailContent content = new EmailServiceImpl.MailContent(
+                "email tạo tài khoản",
+                RECIPIENT,
+                EmailServiceImpl.ACCOUNT_CREATED_SUBJECT,
+                "mail/account-created",
+                java.util.Map.of("temporaryPassword", "Kp7#mQ2xVr9$tLw4"),
+                "Mật khẩu tạm thời: Kp7#mQ2xVr9$tLw4"
+        );
+
+        assertThat(content.toString())
+                .doesNotContain("Kp7#mQ2xVr9$tLw4")
+                .doesNotContain(RECIPIENT)
+                .contains("n***@hrm.vn");
     }
 
     @Nested
