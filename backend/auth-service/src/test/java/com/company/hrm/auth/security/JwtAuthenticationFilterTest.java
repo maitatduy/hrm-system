@@ -21,6 +21,9 @@ import java.util.Date;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
@@ -31,12 +34,14 @@ class JwtAuthenticationFilterTest {
 
     @Mock
     private StringRedisTemplate redisTemplate;
+    @Mock
+    private TokenVersionStore tokenVersionStore;
 
     private JwtAuthenticationFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthenticationFilter(redisTemplate, JWT_TOKENS);
+        filter = new JwtAuthenticationFilter(redisTemplate, JWT_TOKENS, tokenVersionStore);
     }
 
     @AfterEach
@@ -46,6 +51,8 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void authenticatesAccessToken() throws Exception {
+        when(tokenVersionStore.matches(eq(USER_ID), any())).thenReturn(true);
+
         MockHttpServletRequest request = runFilter(token(JWT_TOKENS.accessKey(), JwtTokens.ACCESS_TYPE));
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -53,6 +60,17 @@ class JwtAuthenticationFilterTest {
         assertThat(authentication.getPrincipal()).isEqualTo(USER_ID);
         assertThat(authentication.getAuthorities()).extracting("authority").containsExactly("ROLE_ADMIN");
         assertThat(request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_ATTRIBUTE)).isNull();
+    }
+
+    @Test
+    void rejectsAccessTokenIssuedBeforeSessionsWereRevoked() throws Exception {
+        when(tokenVersionStore.matches(eq(USER_ID), any())).thenReturn(false);
+
+        MockHttpServletRequest request = runFilter(token(JWT_TOKENS.accessKey(), JwtTokens.ACCESS_TYPE));
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_ATTRIBUTE))
+                .isEqualTo("Phiên đăng nhập đã hết hiệu lực, vui lòng đăng nhập lại");
     }
 
     @Test

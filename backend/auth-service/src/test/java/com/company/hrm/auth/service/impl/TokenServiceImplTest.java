@@ -11,6 +11,7 @@ import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.security.JwtTokens;
 import com.company.hrm.auth.security.OtpHasher;
+import com.company.hrm.auth.security.TokenVersionStore;
 import com.company.hrm.auth.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -68,6 +69,8 @@ class TokenServiceImplTest {
             "test-access-secret-at-least-32-bytes-long!!", "test-refresh-secret-at-least-32-bytes-long!");
     @Spy
     private OtpHasher otpHasher = new OtpHasher("test-refresh-secret-at-least-32-bytes-long!");
+    @Mock
+    private TokenVersionStore tokenVersionStore;
 
     @InjectMocks
     private TokenServiceImpl tokenService;
@@ -137,6 +140,8 @@ class TokenServiceImplTest {
             assertThatThrownBy(() -> tokenService.refreshToken(refreshToken))
                     .isInstanceOf(UnauthorizedException.class);
             verify(redisTemplate).scan(any(ScanOptions.class));
+            // Kẻ tấn công đang giữ access token cũng mất quyền ngay, không chờ token hết hạn
+            verify(tokenVersionStore).bump(user.getId().toString());
         }
 
         @Test
