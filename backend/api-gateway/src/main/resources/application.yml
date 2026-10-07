@@ -8,6 +8,9 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST}
       port: ${SPRING_DATA_REDIS_PORT}
       password: ${SPRING_DATA_REDIS_PASSWORD}
+      # Mỗi request có token đều đọc Redis: Redis treo thì lỗi nhanh (503 ở gateway) thay vì chờ mặc định 60 giây
+      timeout: 1s
+      connect-timeout: 1s
   application:
     name: api-gateway
   cloud:
