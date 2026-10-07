@@ -10,10 +10,12 @@ import com.company.hrm.auth.dto.response.LoginResponse;
 import com.company.hrm.auth.dto.response.TokenRefreshResponse;
 import com.company.hrm.auth.dto.response.UserSummaryResponse;
 import com.company.hrm.auth.dto.response.VerifyOtpResponse;
+import com.company.hrm.auth.security.ClientIpResolver;
 import com.company.hrm.auth.security.SecurityUtils;
 import com.company.hrm.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,9 +45,10 @@ public class AuthController {
     @Operation(summary = "Đăng nhập hệ thống", description = "Xác thực email và mật khẩu, trả về accessToken và lưu refreshToken vào cookie")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
-        LoginResponse loginResponse = authService.login(request, response);
+        LoginResponse loginResponse = authService.login(request, ClientIpResolver.resolve(httpRequest), response);
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", loginResponse));
     }
 
@@ -83,9 +86,10 @@ public class AuthController {
     @PostMapping("/forgot-password")
     @Operation(summary = "Yêu cầu quên mật khẩu", description = "Gửi mã xác thực OTP qua email để đặt lại mật khẩu")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequest request
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest
     ) {
-        authService.forgotPassword(request);
+        authService.forgotPassword(request, ClientIpResolver.resolve(httpRequest));
         return ResponseEntity.ok(ApiResponse.success("Nếu email tồn tại trong hệ thống, mã xác thực OTP đã được gửi đến hộp thư của bạn.", null));
     }
 

@@ -15,7 +15,7 @@ import java.util.UUID;
 
 public interface AuthService {
 
-    LoginResponse login(LoginRequest request, HttpServletResponse response);
+    LoginResponse login(LoginRequest request, String clientIp, HttpServletResponse response);
 
     TokenRefreshResponse refreshToken(String refreshToken, HttpServletResponse response);
 
@@ -23,7 +23,7 @@ public interface AuthService {
 
     UserSummaryResponse getCurrentUser(UUID currentUserId);
 
-    void forgotPassword(ForgotPasswordRequest request);
+    void forgotPassword(ForgotPasswordRequest request, String clientIp);
 
     VerifyOtpResponse verifyOtp(VerifyOtpRequest request);
 

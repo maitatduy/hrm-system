@@ -70,16 +70,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request, HttpServletResponse response) {
+    public LoginResponse login(LoginRequest request, String clientIp, HttpServletResponse response) {
         String email = request.getEmail().toLowerCase();
-        rateLimitService.checkLoginAllowed(email);
+        rateLimitService.checkLoginAllowed(email, clientIp);
 
         User user = userRepository.findByEmail(email).orElse(null);
         // Email không tồn tại vẫn chạy BCrypt với hash giả để thời gian phản hồi không lộ email nào đã đăng ký
         String hashToCheck = user != null ? user.getPasswordHash() : dummyPasswordHash();
         boolean passwordMatches = passwordEncoder.matches(request.getPassword(), hashToCheck);
         if (user == null || !passwordMatches) {
-            rateLimitService.recordLoginFailure(email);
+            rateLimitService.recordLoginFailure(email, clientIp);
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
         }
 
@@ -88,7 +88,7 @@ public class AuthServiceImpl implements AuthService {
             throw new ForbiddenException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.");
         }
 
-        rateLimitService.resetLoginFailures(email);
+        rateLimitService.resetLoginFailures(email, clientIp);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -161,9 +161,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void forgotPassword(ForgotPasswordRequest request) {
+    public void forgotPassword(ForgotPasswordRequest request, String clientIp) {
         String email = request.getEmail().toLowerCase();
-        rateLimitService.acquireOtpRequestSlot(email);
+        rateLimitService.acquireOtpRequestSlot(email, clientIp);
         userRepository.findByEmail(email).ifPresent(user -> {
             if (user.getStatus() != UserStatus.LOCKED) {
                 String otp = String.format("%06d", new SecureRandom().nextInt(1_000_000));
