@@ -22,6 +22,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static com.company.hrm.auth.util.LogMasking.maskEmail;
+
 /**
  * Gửi email qua SMTP. Không bao giờ ghi mã OTP hay mật khẩu ra log, email người nhận được che bớt khi log.
  */
@@ -156,13 +158,5 @@ public class EmailServiceImpl implements EmailService {
             Thread.currentThread().interrupt();
             return false;
         }
-    }
-
-    private static String maskEmail(String email) {
-        int atIndex = email.indexOf('@');
-        if (atIndex <= 1) {
-            return "***" + email.substring(Math.max(atIndex, 0));
-        }
-        return email.charAt(0) + "***" + email.substring(atIndex);
     }
 }

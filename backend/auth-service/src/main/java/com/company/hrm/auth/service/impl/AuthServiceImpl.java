@@ -70,25 +70,26 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request, HttpServletResponse response) {
+    public LoginResponse login(LoginRequest request, String clientIp, HttpServletResponse response) {
         String email = request.getEmail().toLowerCase();
-        rateLimitService.checkLoginAllowed(email);
+        // Chiếm suất trước khi chạy BCrypt: nhiều request song song không cùng lọt qua khi bộ đếm chưa kịp tăng
+        rateLimitService.consumeLoginAttempt(email, clientIp);
 
         User user = userRepository.findByEmail(email).orElse(null);
         // Email không tồn tại vẫn chạy BCrypt với hash giả để thời gian phản hồi không lộ email nào đã đăng ký
         String hashToCheck = user != null ? user.getPasswordHash() : dummyPasswordHash();
         boolean passwordMatches = passwordEncoder.matches(request.getPassword(), hashToCheck);
         if (user == null || !passwordMatches) {
-            rateLimitService.recordLoginFailure(email);
+            // Suất đã chiếm được giữ lại, đó chính là lần đăng nhập sai được đếm
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
         }
+        rateLimitService.releaseLoginAttempt(email, clientIp);
 
         // Chỉ báo trạng thái khóa khi đã đúng mật khẩu, tránh lộ trạng thái tài khoản cho người lạ
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new ForbiddenException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.");
         }
 
-        rateLimitService.resetLoginFailures(email);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -161,9 +162,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void forgotPassword(ForgotPasswordRequest request) {
+    public void forgotPassword(ForgotPasswordRequest request, String clientIp) {
         String email = request.getEmail().toLowerCase();
-        rateLimitService.acquireOtpRequestSlot(email);
+        rateLimitService.acquireOtpRequestSlot(email, clientIp);
         userRepository.findByEmail(email).ifPresent(user -> {
             if (user.getStatus() != UserStatus.LOCKED) {
                 String otp = String.format("%06d", new SecureRandom().nextInt(1_000_000));

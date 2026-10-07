@@ -55,6 +55,18 @@ app:
     admin:
       email: ${BOOTSTRAP_ADMIN_EMAIL:}
       password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  # Rate limit đăng nhập và gửi OTP (RateLimitProperties). Nhân viên một văn phòng thường dùng chung IP công khai,
+  # nên tăng login-ip-max-failures nếu văn phòng đông người để vài người gõ sai không chặn cả văn phòng.
+  rate-limit:
+    login-pair-max-failures: 5
+    login-pair-window: 15m
+    login-ip-max-failures: 20
+    login-ip-window: 15m
+    login-email-max-failures: 50
+    login-email-window: 1h
+    otp-cooldown: 60s
+    otp-ip-max-requests: 10
+    otp-ip-window: 1h
 
 jwt:
   secret: ${JWT_SECRET}
