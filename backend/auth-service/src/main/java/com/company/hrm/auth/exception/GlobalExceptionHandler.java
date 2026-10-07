@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,20 +23,16 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /** Mã lỗi MySQL khi trùng giá trị trên khóa unique. */
-    private static final int MYSQL_DUPLICATE_KEY = 1062;
-
     /**
      * Lưới an toàn cho trùng khóa unique chưa được service dịch sang thông báo cụ thể. Các vi phạm ràng buộc khác
      * (NOT NULL, độ dài cột) là lỗi của code chứ không phải của người dùng, nên vẫn trả 500 và ghi log đầy đủ.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        if (!(ex.getMostSpecificCause() instanceof SQLException sqlException)
-                || sqlException.getErrorCode() != MYSQL_DUPLICATE_KEY) {
+        if (!DataIntegrityErrors.isUniqueViolation(ex)) {
             return handleGeneralException(ex);
         }
-        log.warn("Trùng khóa unique: {}", sqlException.getMessage());
+        log.warn("Trùng khóa unique: {}", ex.getMostSpecificCause().getMessage());
         ApiResponse<Void> response = ApiResponse.error(
                 HttpStatus.CONFLICT.value(),
                 "Dữ liệu bị trùng với bản ghi đã có",

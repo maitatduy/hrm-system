@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -149,12 +150,24 @@ class AccountServiceImplCreateTest {
     @Test
     void concurrentDuplicateCaughtByDatabaseIsAConflictAndSendsNoEmail() {
         // Request đồng thời đã vượt qua existsByEmail, ràng buộc unique trong database chặn lại lúc flush
-        when(userRepository.saveAndFlush(any(User.class)))
-                .thenThrow(new DataIntegrityViolationException("Duplicate entry for key 'uk_users_email'"));
+        when(userRepository.saveAndFlush(any(User.class))).thenThrow(new DataIntegrityViolationException(
+                "could not execute statement",
+                new SQLIntegrityConstraintViolationException("Duplicate entry for key 'uk_users_email'", "23000", 1062)));
 
         assertThatThrownBy(() -> accountService.createAccount(request("RANDOM", null)))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage(AccountServiceImpl.DUPLICATE_ACCOUNT_MESSAGE);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void nonUniqueConstraintViolationIsNotReportedAsDuplicate() {
+        // NOT NULL hay quá độ dài cột là lỗi của code, để handler chung trả 500 thay vì báo "đã có tài khoản"
+        DataIntegrityViolationException notNull = new DataIntegrityViolationException("could not execute statement",
+                new SQLIntegrityConstraintViolationException("Column 'role' cannot be null", "23000", 1048));
+        when(userRepository.saveAndFlush(any(User.class))).thenThrow(notNull);
+
+        assertThatThrownBy(() -> accountService.createAccount(request("RANDOM", null))).isSameAs(notNull);
         verify(eventPublisher, never()).publishEvent(any());
     }
 

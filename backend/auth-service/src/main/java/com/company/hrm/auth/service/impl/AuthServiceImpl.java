@@ -139,6 +139,11 @@ public class AuthServiceImpl implements AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.build().toString());
     }
 
+    /**
+     * SameSite=Strict là thứ duy nhất chặn CSRF cho refresh-token và logout, vì hai endpoint này không cần access token.
+     * Nếu sau này frontend và gateway nằm ở hai site khác nhau và phải đổi sang SameSite=None, trang lạ có thể ép
+     * người dùng đăng xuất hoặc gọi refresh; khi đó cần thêm kiểm tra Origin hoặc CSRF token cho hai endpoint này.
+     */
     private ResponseCookie.ResponseCookieBuilder refreshTokenCookie(String value) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, value)
                 .httpOnly(true)

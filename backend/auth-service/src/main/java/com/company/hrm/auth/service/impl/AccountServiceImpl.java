@@ -10,6 +10,7 @@ import com.company.hrm.auth.enums.Role;
 import com.company.hrm.auth.enums.UserStatus;
 import com.company.hrm.auth.exception.BadRequestException;
 import com.company.hrm.auth.exception.ConflictException;
+import com.company.hrm.auth.exception.DataIntegrityErrors;
 import com.company.hrm.auth.exception.ResourceNotFoundException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
@@ -127,7 +128,11 @@ public class AccountServiceImpl implements AccountService {
             // thành 409. Hai request cùng email hoặc cùng nhân viên chạy đồng thời đều vượt qua kiểm tra ở trên.
             savedUser = userRepository.saveAndFlush(newUser);
         } catch (DataIntegrityViolationException e) {
-            throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
+            // Chỉ trùng khóa unique mới là 409, vi phạm ràng buộc khác là lỗi của code nên để handler chung trả 500
+            if (DataIntegrityErrors.isUniqueViolation(e)) {
+                throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
+            }
+            throw e;
         }
         if (!manualPassword) {
             // Listener chỉ gửi email sau khi transaction commit, mật khẩu không bao giờ nằm trong response

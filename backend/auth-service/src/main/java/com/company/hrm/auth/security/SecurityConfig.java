@@ -42,7 +42,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/refresh-token",
-                                // Logout chỉ dựa vào cookie refresh token, phải chạy được cả khi access token đã bị thu hồi
+                                // Logout chỉ dựa vào cookie refresh token, phải chạy được cả khi access token đã bị thu hồi.
+                                // Chống CSRF nhờ cookie SameSite=Strict, xem AuthServiceImpl.refreshTokenCookie
                                 "/api/auth/logout",
                                 "/api/auth/forgot-password",
                                 "/api/auth/verify-otp",
