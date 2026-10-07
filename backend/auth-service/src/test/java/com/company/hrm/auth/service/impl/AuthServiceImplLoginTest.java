@@ -177,6 +177,18 @@ class AuthServiceImplLoginTest {
     }
 
     @Test
+    void logoutWithoutAccessTokenStillRevokesRefreshTokenAndClearsCookie() {
+        // Access token đã bị thu hồi (đổi mật khẩu, bị khóa) nên frontend chỉ còn cookie refresh token
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        authService.logout(null, "refresh-token-in-cookie", response);
+
+        verify(tokenService).revokeRefreshToken("refresh-token-in-cookie");
+        verify(tokenService, never()).blacklistAccessToken(anyString());
+        assertThat(response.getHeader("Set-Cookie")).startsWith("refreshToken=;").contains("Max-Age=0");
+    }
+
+    @Test
     void forgotPasswordRespectsCooldownBeforeLookingUpUser() {
         doThrow(new TooManyRequestsException("cooldown")).when(rateLimitService).acquireOtpRequestSlot(EMAIL);
 

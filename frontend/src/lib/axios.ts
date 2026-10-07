@@ -7,10 +7,12 @@ const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || "";
 
 const REFRESH_TOKEN_PATH = "/api/auth/refresh-token";
 
-// Các endpoint này trả 401 vì sai thông tin đăng nhập, không phải vì access token hết hạn
+// Các endpoint này trả 401 vì sai thông tin đăng nhập, không phải vì access token hết hạn.
+// Logout không cần access token và đang kết thúc phiên, refresh trước khi logout là thừa.
 const SKIP_REFRESH_PATHS = [
     "/api/auth/login",
     REFRESH_TOKEN_PATH,
+    "/api/auth/logout",
     "/api/auth/forgot-password",
     "/api/auth/verify-otp",
     "/api/auth/reset-password",
