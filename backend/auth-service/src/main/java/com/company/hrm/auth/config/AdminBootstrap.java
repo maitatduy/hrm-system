@@ -4,6 +4,7 @@ import com.company.hrm.auth.entity.User;
 import com.company.hrm.auth.enums.Role;
 import com.company.hrm.auth.enums.UserStatus;
 import com.company.hrm.auth.repository.UserRepository;
+import com.company.hrm.auth.validation.PasswordPolicy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -23,8 +24,6 @@ import org.springframework.util.StringUtils;
 @Slf4j
 @Component
 public class AdminBootstrap implements ApplicationRunner {
-
-    static final int MIN_PASSWORD_LENGTH = 8;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -61,10 +60,9 @@ public class AdminBootstrap implements ApplicationRunner {
         if (!normalizedEmail.contains("@")) {
             throw new IllegalStateException("BOOTSTRAP_ADMIN_EMAIL không phải email hợp lệ");
         }
-        if (password.length() < MIN_PASSWORD_LENGTH) {
-            throw new IllegalStateException(
-                    "BOOTSTRAP_ADMIN_PASSWORD phải có tối thiểu " + MIN_PASSWORD_LENGTH + " ký tự");
-        }
+        PasswordPolicy.violation(password).ifPresent(message -> {
+            throw new IllegalStateException("BOOTSTRAP_ADMIN_PASSWORD không hợp lệ: " + message);
+        });
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalStateException("BOOTSTRAP_ADMIN_EMAIL đã thuộc về một tài khoản không phải ADMIN, "
                     + "hãy dùng email khác hoặc nâng quyền tài khoản đó trực tiếp trong database");

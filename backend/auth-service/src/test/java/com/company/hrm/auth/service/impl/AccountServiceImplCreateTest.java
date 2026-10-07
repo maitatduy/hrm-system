@@ -10,6 +10,7 @@ import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.service.TokenService;
 import com.company.hrm.auth.service.event.AccountCreatedEvent;
+import com.company.hrm.auth.validation.PasswordPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -104,6 +105,15 @@ class AccountServiceImplCreateTest {
         verify(userRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getPasswordHash()).isEqualTo("hash:Manual#Pass1");
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void rejectsWeakManualPasswordEvenWithoutDtoValidation() {
+        assertThatThrownBy(() -> accountService.createAccount(request("MANUAL", "12345678")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage(PasswordPolicy.WEAK_MESSAGE);
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test

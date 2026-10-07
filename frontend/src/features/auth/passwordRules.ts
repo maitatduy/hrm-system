@@ -1,4 +1,5 @@
-export const PASSWORD_MAX_LENGTH = 100;
+// Khớp PasswordPolicy.MAX_BYTES ở auth-service: BCrypt chỉ dùng 72 byte đầu của mật khẩu
+export const PASSWORD_MAX_LENGTH = 72;
 
 /** Quy tắc mật khẩu mạnh, thông báo tương ứng là VALIDATION_MESSAGES.PASSWORD_WEAK. */
 const PASSWORD_RULES: readonly ((password: string) => boolean)[] = [

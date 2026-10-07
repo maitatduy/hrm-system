@@ -82,6 +82,16 @@ class AdminBootstrapTest {
     }
 
     @Test
+    void failsStartupWhenPasswordIsLongButWeak() {
+        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+
+        assertThatThrownBy(() -> bootstrap("admin@hrm.local", "12345678").run(null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("BOOTSTRAP_ADMIN_PASSWORD");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void failsStartupWhenEmailIsInvalid() {
         when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
 

@@ -1,6 +1,7 @@
 package com.company.hrm.auth.dto.request;
 
 import com.company.hrm.auth.enums.Role;
+import com.company.hrm.auth.validation.StrongPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,5 +33,7 @@ public class CreateAccountRequest {
     @NotBlank(message = "Chế độ mật khẩu không được để trống")
     private String passwordMode;
 
+    /** Chỉ dùng khi passwordMode là MANUAL. */
+    @StrongPassword
     private String password;
 }

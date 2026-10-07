@@ -16,6 +16,7 @@ import com.company.hrm.auth.security.PasswordGenerator;
 import com.company.hrm.auth.service.AccountService;
 import com.company.hrm.auth.service.TokenService;
 import com.company.hrm.auth.service.event.AccountCreatedEvent;
+import com.company.hrm.auth.validation.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -94,9 +95,13 @@ public class AccountServiceImpl implements AccountService {
         boolean manualPassword = "MANUAL".equalsIgnoreCase(request.getPasswordMode());
         String rawPassword;
         if (manualPassword) {
-            if (request.getPassword() == null || request.getPassword().length() < 8) {
-                throw new BadRequestException("Mật khẩu thủ công phải có độ dài tối thiểu 8 ký tự");
+            if (request.getPassword() == null || request.getPassword().isBlank()) {
+                throw new BadRequestException("Chế độ MANUAL cần nhập mật khẩu");
             }
+            // DTO đã có @StrongPassword, kiểm tra lại ở đây để service an toàn cả khi được gọi không qua controller
+            PasswordPolicy.violation(request.getPassword()).ifPresent(message -> {
+                throw new BadRequestException(message);
+            });
             rawPassword = request.getPassword();
         } else {
             rawPassword = PasswordGenerator.generate();
