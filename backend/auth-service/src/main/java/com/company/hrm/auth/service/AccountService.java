@@ -15,9 +15,11 @@ public interface AccountService {
 
     AccountResponse createAccount(CreateAccountRequest request);
 
-    AccountResponse updateRole(UUID id, Role newRole);
+    /** @param actorId ADMIN đang thực hiện thao tác, không được tự hạ quyền chính mình */
+    AccountResponse updateRole(UUID actorId, UUID id, Role newRole);
 
-    AccountResponse lockAccount(UUID id);
+    /** @param actorId ADMIN đang thực hiện thao tác, không được tự khóa chính mình */
+    AccountResponse lockAccount(UUID actorId, UUID id);
 
     AccountResponse unlockAccount(UUID id);
 }

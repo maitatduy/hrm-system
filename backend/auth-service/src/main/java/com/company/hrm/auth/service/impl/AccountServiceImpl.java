@@ -9,6 +9,7 @@ import com.company.hrm.auth.entity.User;
 import com.company.hrm.auth.enums.Role;
 import com.company.hrm.auth.enums.UserStatus;
 import com.company.hrm.auth.exception.BadRequestException;
+import com.company.hrm.auth.exception.ConflictException;
 import com.company.hrm.auth.exception.ResourceNotFoundException;
 import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
@@ -139,9 +140,19 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public AccountResponse updateRole(UUID id, Role newRole) {
+    public AccountResponse updateRole(UUID actorId, UUID id, Role newRole) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với id: " + id));
+
+        if (user.getRole() == newRole) {
+            return userMapper.toAccountResponse(user);
+        }
+        if (id.equals(actorId)) {
+            throw new BadRequestException("Không thể tự thay đổi vai trò của chính mình");
+        }
+        if (newRole != Role.ADMIN) {
+            ensureAnotherActiveAdminRemains(user);
+        }
 
         user.setRole(newRole);
         User savedUser = userRepository.save(user);
@@ -153,9 +164,14 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public AccountResponse lockAccount(UUID id) {
+    public AccountResponse lockAccount(UUID actorId, UUID id) {
+        if (id.equals(actorId)) {
+            throw new BadRequestException("Không thể tự khóa tài khoản của chính mình");
+        }
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với id: " + id));
+
+        ensureAnotherActiveAdminRemains(user);
 
         user.setStatus(UserStatus.LOCKED);
         User savedUser = userRepository.save(user);
@@ -163,6 +179,21 @@ public class AccountServiceImpl implements AccountService {
         tokenService.revokeAllUserTokens(user.getId().toString());
 
         return userMapper.toAccountResponse(savedUser);
+    }
+
+    /**
+     * Thao tác sắp loại {@code target} khỏi nhóm ADMIN đang hoạt động thì phải còn ít nhất một ADMIN khác.
+     * Các dòng ADMIN được khóa tới hết transaction nên hai thao tác đồng thời không cùng vượt qua kiểm tra.
+     */
+    private void ensureAnotherActiveAdminRemains(User target) {
+        if (target.getRole() != Role.ADMIN || target.getStatus() != UserStatus.ACTIVE) {
+            return;
+        }
+        List<User> activeAdmins = userRepository.lockByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE);
+        boolean anotherAdminRemains = activeAdmins.stream().anyMatch(admin -> !admin.getId().equals(target.getId()));
+        if (!anotherAdminRemains) {
+            throw new ConflictException("Hệ thống phải còn ít nhất một quản trị viên đang hoạt động");
+        }
     }
 
     @Override

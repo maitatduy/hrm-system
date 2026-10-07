@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 /**
- * Tạo tài khoản ADMIN đầu tiên khi hệ thống chưa có ADMIN nào, từ {@code BOOTSTRAP_ADMIN_EMAIL} và
+ * Tạo tài khoản ADMIN khi hệ thống không còn ADMIN đang hoạt động nào, từ {@code BOOTSTRAP_ADMIN_EMAIL} và
  * {@code BOOTSTRAP_ADMIN_PASSWORD}. Chỉ ADMIN mới tạo được tài khoản, nên thiếu bước này thì hệ thống mới
  * dựng lên không ai đăng nhập được.
  * <p>
@@ -44,13 +44,14 @@ public class AdminBootstrap implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (userRepository.existsByRole(Role.ADMIN)) {
-            log.info("Đã có tài khoản ADMIN, bỏ qua bước tạo ADMIN đầu tiên");
+        // Chỉ tính ADMIN đang hoạt động: ADMIN duy nhất bị khóa cũng là hệ thống không còn ai quản trị
+        if (userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)) {
+            log.info("Đã có tài khoản ADMIN đang hoạt động, bỏ qua bước tạo ADMIN đầu tiên");
             return;
         }
 
         if (!StringUtils.hasText(email) || !StringUtils.hasText(password)) {
-            log.warn("Chưa có tài khoản ADMIN nào và chưa cấu hình BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD. "
+            log.warn("Chưa có tài khoản ADMIN đang hoạt động nào và chưa cấu hình BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD. "
                     + "Không ai đăng nhập để tạo tài khoản được cho tới khi cấu hình hai biến này.");
             return;
         }
@@ -64,8 +65,8 @@ public class AdminBootstrap implements ApplicationRunner {
             throw new IllegalStateException("BOOTSTRAP_ADMIN_PASSWORD không hợp lệ: " + message);
         });
         if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new IllegalStateException("BOOTSTRAP_ADMIN_EMAIL đã thuộc về một tài khoản không phải ADMIN, "
-                    + "hãy dùng email khác hoặc nâng quyền tài khoản đó trực tiếp trong database");
+            throw new IllegalStateException("BOOTSTRAP_ADMIN_EMAIL đã thuộc về một tài khoản có sẵn, "
+                    + "hãy dùng email khác, hoặc mở khóa hay nâng quyền tài khoản đó trực tiếp trong database");
         }
 
         User admin = User.builder()

@@ -36,7 +36,7 @@ class AdminBootstrapTest {
 
     @Test
     void createsFirstAdminWhenNoneExists() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(false);
         when(userRepository.existsByEmail("admin@hrm.local")).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn("hashed");
 
@@ -54,7 +54,7 @@ class AdminBootstrapTest {
 
     @Test
     void doesNothingWhenAnAdminAlreadyExists() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(true);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(true);
 
         bootstrap("admin@hrm.local", PASSWORD).run(null);
 
@@ -64,7 +64,7 @@ class AdminBootstrapTest {
 
     @Test
     void skipsWithoutFailingWhenNotConfigured() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(false);
 
         bootstrap("", "").run(null);
 
@@ -73,7 +73,7 @@ class AdminBootstrapTest {
 
     @Test
     void failsStartupWhenPasswordIsTooShort() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(false);
 
         assertThatThrownBy(() -> bootstrap("admin@hrm.local", "short").run(null))
                 .isInstanceOf(IllegalStateException.class)
@@ -83,7 +83,7 @@ class AdminBootstrapTest {
 
     @Test
     void failsStartupWhenPasswordIsLongButWeak() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(false);
 
         assertThatThrownBy(() -> bootstrap("admin@hrm.local", "12345678").run(null))
                 .isInstanceOf(IllegalStateException.class)
@@ -93,7 +93,7 @@ class AdminBootstrapTest {
 
     @Test
     void failsStartupWhenEmailIsInvalid() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(false);
 
         assertThatThrownBy(() -> bootstrap("not-an-email", PASSWORD).run(null))
                 .isInstanceOf(IllegalStateException.class)
@@ -102,7 +102,7 @@ class AdminBootstrapTest {
 
     @Test
     void failsStartupWhenEmailBelongsToNonAdminAccount() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(false);
         when(userRepository.existsByEmail("admin@hrm.local")).thenReturn(true);
 
         assertThatThrownBy(() -> bootstrap("admin@hrm.local", PASSWORD).run(null))
@@ -112,7 +112,7 @@ class AdminBootstrapTest {
 
     @Test
     void toleratesConcurrentCreationByAnotherInstance() {
-        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+        when(userRepository.existsByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)).thenReturn(false);
         when(userRepository.existsByEmail("admin@hrm.local")).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn("hashed");
         when(userRepository.save(any())).thenThrow(new DataIntegrityViolationException("uk_users_email"));
