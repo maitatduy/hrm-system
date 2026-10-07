@@ -1,46 +1,36 @@
 import { create } from "zustand";
 import type { AuthState } from "./types";
 
-const ACCESS_TOKEN_KEY = "auth_access_token";
+/**
+ * Access token chỉ giữ trong bộ nhớ của tab, không ghi vào Web Storage: script lạ chạy được trên trang (XSS) không
+ * đọc được token cũ còn lưu trên máy, và token mất ngay khi đóng tab. Tải lại trang thì phiên được khôi phục bằng
+ * cookie HttpOnly chứa refresh token (xem restoreSession). Lựa chọn "ghi nhớ đăng nhập" nằm ở thời hạn của cookie
+ * đó do backend đặt, frontend không cần lưu gì.
+ */
+const LEGACY_ACCESS_TOKEN_KEY = "auth_access_token";
 
-// "Ghi nhớ đăng nhập" lưu token vào localStorage (giữ qua lần mở trình duyệt sau),
-// ngược lại dùng sessionStorage (mất khi đóng trình duyệt).
-const tokenStorage = {
-    read: (): string | null =>
-        localStorage.getItem(ACCESS_TOKEN_KEY) ?? sessionStorage.getItem(ACCESS_TOKEN_KEY),
-    write: (token: string, rememberMe: boolean) => {
-        tokenStorage.clear();
-        (rememberMe ? localStorage : sessionStorage).setItem(ACCESS_TOKEN_KEY, token);
-    },
-    /** Cập nhật token sau khi refresh, giữ nguyên nơi lưu đã chọn lúc đăng nhập. */
-    replace: (token: string) => {
-        const storage =
-            localStorage.getItem(ACCESS_TOKEN_KEY) !== null ? localStorage : sessionStorage;
-        storage.setItem(ACCESS_TOKEN_KEY, token);
-    },
-    clear: () => {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-    },
+/** Phiên bản trước lưu access token trong Web Storage; xóa để token cũ không còn nằm lại trên máy người dùng. */
+const removeLegacyStoredToken = () => {
+    try {
+        localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+        sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+    } catch {
+        // Trình duyệt chặn Web Storage thì cũng không có token cũ để xóa
+    }
 };
 
-const initialToken = tokenStorage.read();
+removeLegacyStoredToken();
 
 export const useAuthStore = create<AuthState>((set) => ({
-    accessToken: initialToken,
-    isAuthenticated: initialToken !== null,
+    accessToken: null,
+    status: "restoring",
+    isAuthenticated: false,
     sessionUser: null,
-    setAuth: ({ accessToken, user, rememberMe }) => {
-        tokenStorage.write(accessToken, rememberMe);
-        set({ accessToken, isAuthenticated: true, sessionUser: user });
-    },
-    setAccessToken: (accessToken) => {
-        tokenStorage.replace(accessToken);
-        set({ accessToken, isAuthenticated: true });
-    },
+    setAuth: ({ accessToken, user }) =>
+        set({ accessToken, status: "authenticated", isAuthenticated: true, sessionUser: user }),
+    setAccessToken: (accessToken) =>
+        set({ accessToken, status: "authenticated", isAuthenticated: true }),
     setSessionUser: (user) => set({ sessionUser: user }),
-    clearAuth: () => {
-        tokenStorage.clear();
-        set({ accessToken: null, isAuthenticated: false, sessionUser: null });
-    },
+    clearAuth: () =>
+        set({ accessToken: null, status: "anonymous", isAuthenticated: false, sessionUser: null }),
 }));

@@ -61,15 +61,19 @@ export interface ResetPasswordLocationState {
 /** Lý do quay về trang đăng nhập, dùng để hiển thị thông báo phù hợp. */
 export type LoginRedirectReason = "logged_out" | "password_reset" | "password_changed";
 
+/**
+ * restoring: đang khôi phục phiên bằng cookie refresh token lúc tải trang, chưa biết đã đăng nhập hay chưa.
+ * authenticated: có access token trong bộ nhớ. anonymous: chưa đăng nhập hoặc đã đăng xuất.
+ */
+export type SessionStatus = "restoring" | "authenticated" | "anonymous";
+
 export interface AuthState {
+    /** Chỉ nằm trong bộ nhớ, không bao giờ ghi vào localStorage hay sessionStorage. */
     readonly accessToken: string | null;
+    readonly status: SessionStatus;
     readonly isAuthenticated: boolean;
     readonly sessionUser: AuthUserSession | null;
-    readonly setAuth: (payload: {
-        accessToken: string;
-        user: AuthUserSession;
-        rememberMe: boolean;
-    }) => void;
+    readonly setAuth: (payload: { accessToken: string; user: AuthUserSession }) => void;
     readonly setAccessToken: (accessToken: string) => void;
     readonly setSessionUser: (user: AuthUserSession) => void;
     readonly clearAuth: () => void;

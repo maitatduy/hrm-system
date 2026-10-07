@@ -18,8 +18,8 @@ export const useLoginMutation = () => {
 
     return useMutation<LoginResponse, Error, LoginFormValues>({
         mutationFn: login,
-        onSuccess: (data, { rememberMe }) => {
-            setAuth({ accessToken: data.accessToken, user: data.user, rememberMe });
+        onSuccess: (data) => {
+            setAuth({ accessToken: data.accessToken, user: data.user });
             queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
         },
     });

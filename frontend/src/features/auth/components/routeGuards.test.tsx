@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "../store";
 import type { AuthUserSession, UserRole } from "../types";
 import { GuestRoute } from "./GuestRoute";
@@ -51,53 +51,58 @@ describe("route guards", () => {
     });
 
     it("lets a user with an allowed role through", () => {
-        useAuthStore
-            .getState()
-            .setAuth({ accessToken: "token", user: userWithRole("HR"), rememberMe: false });
+        useAuthStore.getState().setAuth({ accessToken: "token", user: userWithRole("HR") });
         renderAt("/dashboard");
         expect(screen.getByText("admin dashboard")).toBeInTheDocument();
     });
 
     it("redirects a user without the required role to their own home page", () => {
-        useAuthStore
-            .getState()
-            .setAuth({ accessToken: "token", user: userWithRole("EMPLOYEE"), rememberMe: false });
+        useAuthStore.getState().setAuth({ accessToken: "token", user: userWithRole("EMPLOYEE") });
         renderAt("/dashboard");
         expect(screen.getByTestId("location")).toHaveTextContent("/portal/dashboard");
     });
 
     it("sends signed-in users away from login to the safe redirect target", () => {
-        useAuthStore
-            .getState()
-            .setAuth({ accessToken: "token", user: userWithRole("ADMIN"), rememberMe: true });
+        useAuthStore.getState().setAuth({ accessToken: "token", user: userWithRole("ADMIN") });
         renderAt("/login?redirect=%2Fsettings");
         expect(screen.getByTestId("location")).toHaveTextContent("/settings");
     });
 
     it("ignores an external redirect target after sign-in", () => {
-        useAuthStore
-            .getState()
-            .setAuth({ accessToken: "token", user: userWithRole("ADMIN"), rememberMe: true });
+        useAuthStore.getState().setAuth({ accessToken: "token", user: userWithRole("ADMIN") });
         renderAt("/login?redirect=%2F%2Fevil.com");
         expect(screen.getByTestId("location")).toHaveTextContent(/^\/$/);
     });
 });
 
-describe("auth store token persistence", () => {
-    it("keeps the token only for this browser session when remember me is off", () => {
-        useAuthStore
-            .getState()
-            .setAuth({ accessToken: "token", user: userWithRole("HR"), rememberMe: false });
-        expect(sessionStorage.getItem("auth_access_token")).toBe("token");
-        expect(localStorage.getItem("auth_access_token")).toBeNull();
+describe("while the session is being restored on page load", () => {
+    beforeEach(() => {
+        useAuthStore.setState({ status: "restoring", isAuthenticated: false, accessToken: null });
     });
 
-    it("keeps refreshed tokens in the storage chosen at login", () => {
-        useAuthStore
-            .getState()
-            .setAuth({ accessToken: "old", user: userWithRole("HR"), rememberMe: true });
-        useAuthStore.getState().setAccessToken("new");
-        expect(localStorage.getItem("auth_access_token")).toBe("new");
-        expect(sessionStorage.getItem("auth_access_token")).toBeNull();
+    it("waits instead of sending a signed-in user to the login page", () => {
+        renderAt("/dashboard");
+        expect(screen.getByRole("status")).toHaveTextContent("Đang tải...");
+        expect(screen.queryByText("login page")).not.toBeInTheDocument();
+    });
+
+    it("waits on guest pages so a remembered user is not shown the login form", () => {
+        renderAt("/login");
+        expect(screen.getByRole("status")).toBeInTheDocument();
+        expect(screen.queryByText("login page")).not.toBeInTheDocument();
+    });
+});
+
+describe("auth store", () => {
+    it("never writes the access token to web storage", () => {
+        const setItem = vi.spyOn(Storage.prototype, "setItem");
+
+        useAuthStore.getState().setAuth({ accessToken: "token", user: userWithRole("HR") });
+        useAuthStore.getState().setAccessToken("refreshed");
+
+        expect(setItem).not.toHaveBeenCalled();
+        expect(localStorage.length).toBe(0);
+        expect(sessionStorage.length).toBe(0);
+        setItem.mockRestore();
     });
 });

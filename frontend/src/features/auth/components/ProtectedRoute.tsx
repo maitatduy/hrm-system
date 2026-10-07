@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/Button";
 import { AUTH_MESSAGES } from "@/constants/messages";
 import { useAuthStore } from "../store";
 import { useCurrentUserQuery } from "../hooks/useCurrentUserQuery";
 import { getHomePathByRole } from "../utils";
+import { FullScreenMessage, SessionRestoring } from "./SessionRestoring";
 import type { UserRole } from "../types";
 
 export interface ProtectedRouteProps {
@@ -12,17 +12,17 @@ export interface ProtectedRouteProps {
     readonly allowedRoles?: readonly UserRole[];
 }
 
-const FullScreenMessage = ({ children }: { readonly children: ReactNode }) => (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-canvas-soft text-[14px] text-ink-muted">
-        {children}
-    </div>
-);
-
 export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     const location = useLocation();
+    const status = useAuthStore((state) => state.status);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const sessionUser = useAuthStore((state) => state.sessionUser);
     const currentUserQuery = useCurrentUserQuery();
+
+    // Chưa biết còn phiên hay không thì chờ, không đẩy người đang đăng nhập về trang đăng nhập khi tải lại trang
+    if (status === "restoring") {
+        return <SessionRestoring />;
+    }
 
     if (!isAuthenticated) {
         const target = `${location.pathname}${location.search}`;
@@ -39,9 +39,7 @@ export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
                 </Button>
             </FullScreenMessage>
         ) : (
-            <FullScreenMessage>
-                <p role="status">{AUTH_MESSAGES.SESSION_LOADING}</p>
-            </FullScreenMessage>
+            <SessionRestoring />
         );
     }
 
