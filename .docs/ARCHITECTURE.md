@@ -85,8 +85,8 @@ Mỗi service sở hữu database riêng, không service nào được đọc tr
 
 - api-gateway xác thực access token cho mọi request đi qua route (`JwtAuthenticationFilter`), trừ các endpoint công khai của auth-service: login, refresh-token, logout, forgot-password, verify-otp, reset-password. Danh sách này phải khớp `permitAll` trong `SecurityConfig` của auth-service, so khớp chính xác từng đường.
 - Kiểm tra gồm chữ ký bằng `JWT_SECRET`, hạn dùng, claim `token_type=access`, và hai key Redis do auth-service ghi: `auth:blacklist:{jti}` (đã đăng xuất) và `auth:token-version:{userId}` (phiên đã bị thu hồi khi khóa tài khoản, đổi role, đổi mật khẩu). Đổi định dạng token hoặc tên key ở auth-service thì phải đổi ở gateway.
-- Không đọc được Redis thì gateway từ chối request với 503 (fail closed), không cho token có thể đã bị thu hồi đi qua.
-- Phân quyền theo đường ngay tại gateway (`RouteAccessPolicy`): `/api/payrolls/**` và `/api/payslips/**` chỉ ADMIN và HR. Service phía sau vẫn tự kiểm tra lại quyền.
+- Không đọc được Redis thì gateway từ chối request với 503 (fail closed), không cho token có thể đã bị thu hồi đi qua. Timeout Redis đặt 1 giây ở cả gateway và auth-service: Redis treo thì request lỗi sau khoảng 1 đến 2 giây thay vì 60 giây mặc định của Lettuce. Hai lần đọc Redis của gateway chạy song song.
+- Phân quyền theo đường ngay tại gateway (`RouteAccessPolicy`): `/api/payrolls/**` và `/api/payslips/**` chỉ ADMIN và HR, `/api/accounts/**` chỉ ADMIN. Service phía sau vẫn tự kiểm tra lại quyền.
 - Request hợp lệ được gắn `X-User-Id`, `X-User-Role`, `X-User-Email` từ token đã xác thực; các header cùng tên do client gửi luôn bị xóa trước nên không giả mạo được. Header `Authorization` vẫn được chuyển tiếp để service tự xác thực lại.
 - Discovery locator của gateway bị tắt cứng trong cấu hình, vì nó tự mở đường `/{service-id}/**` tới mọi service đăng ký Eureka, đi vòng qua route và quy tắc phân quyền.
 - Gateway chỉ giữ `JWT_SECRET`, không bao giờ giữ `JWT_REFRESH_SECRET`. Vì HS256 là khóa đối xứng, gateway về lý thuyết vẫn ký được access token; hướng lâu dài là chuyển access token sang RS256 hoặc ES256 để gateway chỉ giữ public key.

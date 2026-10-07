@@ -208,6 +208,17 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    void accountManagementIsOnlyForAdmin() {
+        assertRejected(run(get("/api/accounts", accessToken("HR"))), HttpStatus.FORBIDDEN,
+                JwtAuthenticationFilter.FORBIDDEN_MESSAGE);
+        assertRejected(run(get("/api/accounts/123/lock", accessToken("MANAGER"))), HttpStatus.FORBIDDEN,
+                JwtAuthenticationFilter.FORBIDDEN_MESSAGE);
+
+        run(get("/api/accounts", accessToken("ADMIN")));
+        assertThat(forwarded.get()).isNotNull();
+    }
+
+    @Test
     void payrollIsOnlyForAdminAndHr() {
         assertRejected(run(get("/api/payrolls/2026-10", accessToken("EMPLOYEE"))), HttpStatus.FORBIDDEN,
                 JwtAuthenticationFilter.FORBIDDEN_MESSAGE);

@@ -38,7 +38,8 @@ public class TokenRevocationChecker {
                 .defaultIfEmpty(0L)
                 .map(current -> current != tokenVersion(claims));
 
-        return blacklisted.flatMap(isBlacklisted -> isBlacklisted ? Mono.just(true) : staleVersion);
+        // Hai lần đọc chạy song song, độ trễ thêm vào mỗi request chỉ bằng một lần đọc Redis
+        return Mono.zip(blacklisted, staleVersion, Boolean::logicalOr);
     }
 
     /** Token không có claim (cấp trước khi có cơ chế phiên bản) được coi là phiên bản 0, giống auth-service. */

@@ -33,9 +33,13 @@ public class RouteAccessPolicy {
             "/api/auth/reset-password"
     );
 
-    /** Payroll chứa dữ liệu nhạy cảm, chỉ ADMIN và HR (AGENTS.md: kiểm tra ở cả gateway lẫn service). */
+    /**
+     * Payroll chứa dữ liệu nhạy cảm, chỉ ADMIN và HR (AGENTS.md: kiểm tra ở cả gateway lẫn service).
+     * Quản lý tài khoản chỉ ADMIN, khớp @PreAuthorize của AccountController ở auth-service.
+     */
     private static final Map<List<PathPattern>, Set<String>> ROLE_RESTRICTED_PATHS = Map.of(
-            parse("/api/payrolls/**", "/api/payslips/**"), Set.of("ADMIN", "HR")
+            parse("/api/payrolls/**", "/api/payslips/**"), Set.of("ADMIN", "HR"),
+            parse("/api/accounts", "/api/accounts/**"), Set.of("ADMIN")
     );
 
     public boolean isPublic(String path) {
