@@ -38,8 +38,8 @@ apiClient.interceptors.request.use((config) => {
 
 let refreshPromise: Promise<string> | null = null;
 
-// Gộp các request 401 đồng thời thành một lần gọi refresh duy nhất
-const refreshAccessToken = (): Promise<string> => {
+// Gộp các request 401 đồng thời (và bước khôi phục phiên lúc tải trang) thành một lần gọi refresh duy nhất
+export const refreshAccessToken = (): Promise<string> => {
     refreshPromise ??= axios
         .post<ApiResponse<{ accessToken: string }>>(
             `${API_GATEWAY_URL}${REFRESH_TOKEN_PATH}`,
