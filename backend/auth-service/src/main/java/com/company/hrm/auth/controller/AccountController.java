@@ -8,6 +8,7 @@ import com.company.hrm.auth.dto.response.PageResponse;
 import com.company.hrm.auth.enums.Role;
 import com.company.hrm.auth.enums.UserStatus;
 import com.company.hrm.auth.exception.BadRequestException;
+import com.company.hrm.auth.security.SecurityUtils;
 import com.company.hrm.auth.service.AccountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -75,22 +76,22 @@ public class AccountController {
 
     @PutMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Cập nhật vai trò người dùng", description = "Thay đổi vai trò của người dùng và thu hồi các phiên đăng nhập cũ")
+    @Operation(summary = "Cập nhật vai trò người dùng", description = "Thay đổi vai trò và thu hồi ngay mọi phiên đăng nhập của người dùng. Không được tự đổi vai trò của chính mình hoặc hạ quyền quản trị viên đang hoạt động cuối cùng (409)")
     public ResponseEntity<ApiResponse<AccountResponse>> updateRole(
             @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateRoleRequest request
     ) {
-        AccountResponse response = accountService.updateRole(id, request.getRole());
+        AccountResponse response = accountService.updateRole(SecurityUtils.getCurrentUserId(), id, request.getRole());
         return ResponseEntity.ok(ApiResponse.success("Cập nhật vai trò thành công", response));
     }
 
     @PutMapping("/{id}/lock")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Khóa tài khoản", description = "Khóa tài khoản người dùng và thu hồi toàn bộ token đăng nhập ngay lập tức")
+    @Operation(summary = "Khóa tài khoản", description = "Khóa tài khoản và thu hồi ngay mọi phiên đăng nhập. Không được tự khóa chính mình hoặc khóa quản trị viên đang hoạt động cuối cùng (409)")
     public ResponseEntity<ApiResponse<AccountResponse>> lockAccount(
             @PathVariable("id") UUID id
     ) {
-        AccountResponse response = accountService.lockAccount(id);
+        AccountResponse response = accountService.lockAccount(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.success("Khóa tài khoản thành công", response));
     }
 

@@ -1,7 +1,7 @@
 package com.company.hrm.auth.dto.request;
 
+import com.company.hrm.auth.validation.StrongPassword;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +19,6 @@ public class ResetPasswordRequest {
     private String resetToken;
 
     @NotBlank(message = "Mật khẩu mới không được để trống")
-    @Size(min = 8, max = 100, message = "Mật khẩu phải từ 8 đến 100 ký tự")
+    @StrongPassword
     private String newPassword;
 }

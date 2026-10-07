@@ -11,6 +11,7 @@ import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.security.JwtTokens;
 import com.company.hrm.auth.security.OtpHasher;
+import com.company.hrm.auth.security.TokenVersionStore;
 import com.company.hrm.auth.service.TokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -42,6 +43,7 @@ public class TokenServiceImpl implements TokenService {
     private final UserMapper userMapper;
     private final JwtTokens jwtTokens;
     private final OtpHasher otpHasher;
+    private final TokenVersionStore tokenVersionStore;
 
     @Value("${jwt.access-token-expiration}")
     private long accessTokenExpirationMs;
@@ -89,6 +91,13 @@ public class TokenServiceImpl implements TokenService {
         String jti = claims.getId();
         if (userIdStr == null || jti == null) {
             throw new UnauthorizedException("Token không hợp lệ");
+        }
+
+        // Phiên đã bị thu hồi chính thức (khóa, đổi role, đổi mật khẩu): refresh token cũ bị xóa khỏi Redis là đúng
+        // thiết kế, không phải dấu hiệu tấn công, nên từ chối luôn và không chạy logic phát hiện dùng lại.
+        // Kiểm tra này cũng chặn refresh token được ghi vào Redis sau khi revokeAllUserTokens đã quét xong.
+        if (!tokenVersionStore.matches(userIdStr, claims.get(TokenVersionStore.CLAIM, Number.class))) {
+            throw new UnauthorizedException(TokenVersionStore.REVOKED_MESSAGE);
         }
 
         // DEL là thao tác atomic: chỉ đúng một request được "tiêu thụ" refresh token này
@@ -235,8 +244,14 @@ public class TokenServiceImpl implements TokenService {
         redisTemplate.delete(REDIS_RESET_PREFIX + resetToken);
     }
 
+    /**
+     * Thu hồi mọi phiên của user: tăng phiên bản token để access token đã cấp mất hiệu lực ngay,
+     * và xóa toàn bộ refresh token.
+     */
     @Override
     public void revokeAllUserTokens(String userId) {
+        tokenVersionStore.bump(userId);
+
         ScanOptions options = ScanOptions.scanOptions()
                 .match(REDIS_REFRESH_PREFIX + userId + ":*")
                 .count(100)
@@ -266,6 +281,7 @@ public class TokenServiceImpl implements TokenService {
                 .id(jti)
                 .subject(user.getId().toString())
                 .claim(JwtTokens.TYPE_CLAIM, JwtTokens.ACCESS_TYPE)
+                .claim(TokenVersionStore.CLAIM, tokenVersionStore.current(user.getId().toString()))
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
                 .claim("employeeId", user.getEmployeeId() != null ? user.getEmployeeId().toString() : null)
@@ -285,6 +301,7 @@ public class TokenServiceImpl implements TokenService {
                 .id(jti)
                 .subject(user.getId().toString())
                 .claim(JwtTokens.TYPE_CLAIM, JwtTokens.REFRESH_TYPE)
+                .claim(TokenVersionStore.CLAIM, tokenVersionStore.current(user.getId().toString()))
                 .claim(REMEMBER_ME_CLAIM, rememberMe)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))

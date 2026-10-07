@@ -8,7 +8,7 @@ export const VALIDATION_MESSAGES = {
     PASSWORD_MISMATCH: "Mật khẩu không khớp",
     PASSWORD_SAME_AS_CURRENT: "Phải khác mật khẩu hiện tại",
     PASSWORD_WEAK: "Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt",
-    passwordTooLong: (maxLength: number) => `Tối đa ${maxLength} ký tự`,
+    PASSWORD_TOO_LONG: "Mật khẩu quá dài, tối đa 72 byte (khoảng 72 ký tự không dấu)",
     otpIncomplete: (length: number) => `Nhập đủ ${length} số`,
 } as const;
 

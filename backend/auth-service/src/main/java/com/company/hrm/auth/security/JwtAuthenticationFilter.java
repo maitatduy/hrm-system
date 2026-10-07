@@ -38,6 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final StringRedisTemplate redisTemplate;
     private final JwtTokens jwtTokens;
+    private final TokenVersionStore tokenVersionStore;
 
     @Override
     protected void doFilterInternal(
@@ -55,6 +56,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (isBlacklisted(claims.getId(), token)) {
                     log.warn("Token đã bị đưa vào blacklist: jti={}", claims.getId());
                     request.setAttribute(AUTH_ERROR_ATTRIBUTE, "Token đã bị thu hồi hoặc không còn hiệu lực");
+                } else if (claims.getSubject() == null
+                        || !tokenVersionStore.matches(claims.getSubject(), claims.get(TokenVersionStore.CLAIM, Number.class))) {
+                    // Tài khoản đã bị khóa, đổi role hoặc đổi mật khẩu sau khi token được cấp
+                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, TokenVersionStore.REVOKED_MESSAGE);
                 } else {
                     authenticate(request, claims);
                 }

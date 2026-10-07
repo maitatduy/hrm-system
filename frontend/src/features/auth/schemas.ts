@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { VALIDATION_MESSAGES } from "@/constants/messages";
-import { isStrongPassword, PASSWORD_MAX_LENGTH } from "./passwordRules";
+import { isStrongPassword, isWithinPasswordByteLimit } from "./passwordRules";
 
 const emailSchema = z
     .string()
@@ -10,7 +10,7 @@ const emailSchema = z
 
 const newPasswordSchema = z
     .string()
-    .max(PASSWORD_MAX_LENGTH, VALIDATION_MESSAGES.passwordTooLong(PASSWORD_MAX_LENGTH))
+    .refine(isWithinPasswordByteLimit, VALIDATION_MESSAGES.PASSWORD_TOO_LONG)
     .refine(isStrongPassword, VALIDATION_MESSAGES.PASSWORD_WEAK);
 
 const confirmPasswordSchema = z.string().min(1, VALIDATION_MESSAGES.CONFIRM_PASSWORD_REQUIRED);

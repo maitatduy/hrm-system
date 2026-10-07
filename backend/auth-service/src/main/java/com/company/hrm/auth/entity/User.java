@@ -25,12 +25,12 @@ import java.util.UUID;
 @Table(
     name = "users",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_email", columnNames = "email")
+        @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_users_employee_id", columnNames = "employee_id")
     },
     indexes = {
         @Index(name = "idx_users_role", columnList = "role"),
-        @Index(name = "idx_users_status", columnList = "status"),
-        @Index(name = "idx_users_employee_id", columnList = "employee_id")
+        @Index(name = "idx_users_status", columnList = "status")
     }
 )
 @Getter

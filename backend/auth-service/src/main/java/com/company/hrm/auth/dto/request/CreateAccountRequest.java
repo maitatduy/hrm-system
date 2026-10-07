@@ -32,5 +32,9 @@ public class CreateAccountRequest {
     @NotBlank(message = "Chế độ mật khẩu không được để trống")
     private String passwordMode;
 
+    /**
+     * Chỉ dùng khi passwordMode là MANUAL, các chế độ khác bỏ qua trường này. Không đặt @StrongPassword ở đây vì
+     * annotation chạy cả khi chế độ là RANDOM; service kiểm tra PasswordPolicy riêng cho MANUAL.
+     */
     private String password;
 }

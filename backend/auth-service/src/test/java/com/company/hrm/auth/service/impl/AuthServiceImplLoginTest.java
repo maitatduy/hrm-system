@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -131,6 +132,21 @@ class AuthServiceImplLoginTest {
     }
 
     @Test
+    void unknownEmailStillRunsPasswordCheckAgainstDummyHash() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(anyString())).thenReturn("dummy-hash");
+
+        for (int i = 0; i < 2; i++) {
+            assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD, false), new MockHttpServletResponse()))
+                    .isInstanceOf(UnauthorizedException.class);
+        }
+
+        // Cùng chi phí BCrypt với email có thật, hash giả chỉ tạo một lần
+        verify(passwordEncoder, times(2)).matches(PASSWORD, "dummy-hash");
+        verify(passwordEncoder, times(1)).encode(anyString());
+    }
+
+    @Test
     void lockedAccountWithWrongPasswordDoesNotRevealLockedStatus() {
         user.setStatus(UserStatus.LOCKED);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
@@ -158,6 +174,18 @@ class AuthServiceImplLoginTest {
         assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD, false), new MockHttpServletResponse()))
                 .isInstanceOf(TooManyRequestsException.class);
         verifyNoInteractions(userRepository, passwordEncoder);
+    }
+
+    @Test
+    void logoutWithoutAccessTokenStillRevokesRefreshTokenAndClearsCookie() {
+        // Access token đã bị thu hồi (đổi mật khẩu, bị khóa) nên frontend chỉ còn cookie refresh token
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        authService.logout(null, "refresh-token-in-cookie", response);
+
+        verify(tokenService).revokeRefreshToken("refresh-token-in-cookie");
+        verify(tokenService, never()).blacklistAccessToken(anyString());
+        assertThat(response.getHeader("Set-Cookie")).startsWith("refreshToken=;").contains("Max-Age=0");
     }
 
     @Test

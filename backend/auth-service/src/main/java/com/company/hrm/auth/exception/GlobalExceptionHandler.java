@@ -2,6 +2,7 @@ package com.company.hrm.auth.exception;
 
 import com.company.hrm.auth.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,6 +22,24 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * Lưới an toàn cho trùng khóa unique chưa được service dịch sang thông báo cụ thể. Các vi phạm ràng buộc khác
+     * (NOT NULL, độ dài cột) là lỗi của code chứ không phải của người dùng, nên vẫn trả 500 và ghi log đầy đủ.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        if (!DataIntegrityErrors.isUniqueViolation(ex)) {
+            return handleGeneralException(ex);
+        }
+        log.warn("Trùng khóa unique: {}", ex.getMostSpecificCause().getMessage());
+        ApiResponse<Void> response = ApiResponse.error(
+                HttpStatus.CONFLICT.value(),
+                "Dữ liệu bị trùng với bản ghi đã có",
+                null
+        );
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
 
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {

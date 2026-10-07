@@ -60,8 +60,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Đăng xuất tài khoản", description = "Thu hồi refresh token và đưa access token vào danh sách blacklist")
+    @Operation(summary = "Đăng xuất tài khoản", description = "Không cần xác thực: thu hồi refresh token trong cookie và xóa cookie, "
+            + "đưa access token vào blacklist nếu có gửi kèm và còn hợp lệ. Luôn trả 200 để đăng xuất được cả khi phiên đã bị thu hồi")
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
             @CookieValue(name = "refreshToken", required = false) String refreshToken,

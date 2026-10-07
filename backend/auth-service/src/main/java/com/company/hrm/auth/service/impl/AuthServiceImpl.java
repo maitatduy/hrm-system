@@ -22,6 +22,7 @@ import com.company.hrm.auth.service.AuthService;
 import com.company.hrm.auth.service.EmailService;
 import com.company.hrm.auth.service.RateLimitService;
 import com.company.hrm.auth.service.TokenService;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,24 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
+    /** Tạo bằng chính PasswordEncoder đang dùng để có cùng cost với hash thật. */
+    private volatile String dummyPasswordHash;
+
+    /** Tạo sẵn lúc khởi động để cả lần đăng nhập đầu tiên với email không tồn tại cũng không chậm hơn bình thường. */
+    @PostConstruct
+    void initDummyPasswordHash() {
+        dummyPasswordHash();
+    }
+
+    private String dummyPasswordHash() {
+        String hash = dummyPasswordHash;
+        if (hash == null) {
+            hash = passwordEncoder.encode(UUID.randomUUID().toString());
+            dummyPasswordHash = hash;
+        }
+        return hash;
+    }
+
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request, HttpServletResponse response) {
@@ -56,7 +75,10 @@ public class AuthServiceImpl implements AuthService {
         rateLimitService.checkLoginAllowed(email);
 
         User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        // Email không tồn tại vẫn chạy BCrypt với hash giả để thời gian phản hồi không lộ email nào đã đăng ký
+        String hashToCheck = user != null ? user.getPasswordHash() : dummyPasswordHash();
+        boolean passwordMatches = passwordEncoder.matches(request.getPassword(), hashToCheck);
+        if (user == null || !passwordMatches) {
             rateLimitService.recordLoginFailure(email);
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
         }
@@ -117,6 +139,11 @@ public class AuthServiceImpl implements AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.build().toString());
     }
 
+    /**
+     * SameSite=Strict là thứ duy nhất chặn CSRF cho refresh-token và logout, vì hai endpoint này không cần access token.
+     * Nếu sau này frontend và gateway nằm ở hai site khác nhau và phải đổi sang SameSite=None, trang lạ có thể ép
+     * người dùng đăng xuất hoặc gọi refresh; khi đó cần thêm kiểm tra Origin hoặc CSRF token cho hai endpoint này.
+     */
     private ResponseCookie.ResponseCookieBuilder refreshTokenCookie(String value) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, value)
                 .httpOnly(true)

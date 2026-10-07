@@ -11,6 +11,7 @@ import com.company.hrm.auth.mapper.UserMapper;
 import com.company.hrm.auth.repository.UserRepository;
 import com.company.hrm.auth.security.JwtTokens;
 import com.company.hrm.auth.security.OtpHasher;
+import com.company.hrm.auth.security.TokenVersionStore;
 import com.company.hrm.auth.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -68,6 +69,8 @@ class TokenServiceImplTest {
             "test-access-secret-at-least-32-bytes-long!!", "test-refresh-secret-at-least-32-bytes-long!");
     @Spy
     private OtpHasher otpHasher = new OtpHasher("test-refresh-secret-at-least-32-bytes-long!");
+    @Mock
+    private TokenVersionStore tokenVersionStore;
 
     @InjectMocks
     private TokenServiceImpl tokenService;
@@ -88,7 +91,16 @@ class TokenServiceImplTest {
                 .status(UserStatus.ACTIVE)
                 .build();
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        // Giả lập phiên bản token hiện tại của user, test nào cần thu hồi phiên thì đổi currentVersion
+        when(tokenVersionStore.current(anyString())).thenAnswer(invocation -> currentVersion);
+        when(tokenVersionStore.matches(anyString(), any())).thenAnswer(invocation -> {
+            Number tokenVersion = invocation.getArgument(1);
+            return (tokenVersion == null ? 0L : tokenVersion.longValue()) == currentVersion;
+        });
     }
+
+    private long currentVersion = 0L;
 
     @Nested
     class RefreshToken {
@@ -98,6 +110,42 @@ class TokenServiceImplTest {
         @BeforeEach
         void issueToken() {
             refreshToken = tokenService.generateTokens(user, true).getRefreshToken();
+        }
+
+        @Test
+        void refreshAfterSessionsWereRevokedIsRejectedWithoutReuseAlarm() {
+            // Đổi mật khẩu, khóa hoặc đổi role đã tăng phiên bản (hai lần: ngay và sau commit) và xóa refresh token
+            currentVersion = 2L;
+
+            assertThatThrownBy(() -> tokenService.refreshToken(refreshToken))
+                    .isInstanceOf(UnauthorizedException.class)
+                    .hasMessage(TokenVersionStore.REVOKED_MESSAGE);
+
+            // Không coi là dùng lại token: không tiêu thụ key, không quét và không thu hồi thêm lần nữa
+            verify(redisTemplate, never()).delete(anyString());
+            verify(redisTemplate, never()).scan(any(ScanOptions.class));
+            verify(tokenVersionStore, never()).bump(anyString());
+        }
+
+        @Test
+        void refreshTokenWrittenDuringRevocationIsRejected() {
+            // Refresh token cấp lúc phiên bản còn là 0, ghi vào Redis sau khi revokeAllUserTokens đã quét xong
+            currentVersion = 1L;
+            when(redisTemplate.delete(anyString())).thenReturn(true);
+
+            assertThatThrownBy(() -> tokenService.refreshToken(refreshToken))
+                    .hasMessage(TokenVersionStore.REVOKED_MESSAGE);
+        }
+
+        @Test
+        void rotatedTokensCarryTheCurrentVersion() {
+            currentVersion = 3L;
+            String token = tokenService.generateTokens(user, true).getRefreshToken();
+            when(redisTemplate.delete(anyString())).thenReturn(true);
+
+            TokenPair rotated = tokenService.refreshToken(token);
+
+            assertThat(rotated.getAccessToken()).isNotBlank();
         }
 
         @Test
@@ -137,6 +185,8 @@ class TokenServiceImplTest {
             assertThatThrownBy(() -> tokenService.refreshToken(refreshToken))
                     .isInstanceOf(UnauthorizedException.class);
             verify(redisTemplate).scan(any(ScanOptions.class));
+            // Kẻ tấn công đang giữ access token cũng mất quyền ngay, không chờ token hết hạn
+            verify(tokenVersionStore).bump(user.getId().toString());
         }
 
         @Test
