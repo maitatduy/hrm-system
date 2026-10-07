@@ -22,6 +22,7 @@ import com.company.hrm.auth.service.AuthService;
 import com.company.hrm.auth.service.EmailService;
 import com.company.hrm.auth.service.RateLimitService;
 import com.company.hrm.auth.service.TokenService;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,8 +50,14 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
-    /** Tạo bằng chính PasswordEncoder đang dùng để có cùng cost với hash thật, tạo lần đầu khi cần. */
+    /** Tạo bằng chính PasswordEncoder đang dùng để có cùng cost với hash thật. */
     private volatile String dummyPasswordHash;
+
+    /** Tạo sẵn lúc khởi động để cả lần đăng nhập đầu tiên với email không tồn tại cũng không chậm hơn bình thường. */
+    @PostConstruct
+    void initDummyPasswordHash() {
+        dummyPasswordHash();
+    }
 
     private String dummyPasswordHash() {
         String hash = dummyPasswordHash;

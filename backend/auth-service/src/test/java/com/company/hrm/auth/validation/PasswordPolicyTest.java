@@ -73,6 +73,20 @@ class PasswordPolicyTest {
         assertThat(VALIDATOR.validate(request)).isEmpty();
     }
 
+    @Test
+    void createAccountIgnoresAnUnusedWeakPasswordForGeneratedModes() {
+        // Mật khẩu chỉ dùng cho MANUAL, gửi kèm mật khẩu yếu khi RANDOM không được làm request thất bại
+        CreateAccountRequest request = CreateAccountRequest.builder()
+                .employeeId(UUID.randomUUID())
+                .email("a@hrm.vn")
+                .role(Role.EMPLOYEE)
+                .passwordMode("RANDOM")
+                .password("123")
+                .build();
+
+        assertThat(VALIDATOR.validate(request)).isEmpty();
+    }
+
     private static <T> Set<String> messages(Set<ConstraintViolation<T>> violations) {
         return violations.stream().map(ConstraintViolation::getMessage).collect(java.util.stream.Collectors.toSet());
     }

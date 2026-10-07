@@ -35,6 +35,23 @@ describe("resetPasswordSchema", () => {
         expect(result.error?.issues[0]?.message).toBe(VALIDATION_MESSAGES.PASSWORD_WEAK);
     });
 
+    it("limits the password by UTF-8 bytes like the backend, not by characters", () => {
+        const asciiAtLimit = "Aa1!" + "x".repeat(68);
+        // "ậ" chiếm 3 byte: 30 ký tự vẫn dưới 72 ký tự nhưng đã vượt 72 byte
+        const vietnameseOverLimit = "Aa1!" + "ậ".repeat(26);
+
+        const parse = (password: string) =>
+            resetPasswordSchema.safeParse({ newPassword: password, confirmPassword: password });
+
+        expect(parse(asciiAtLimit).success).toBe(true);
+        expect(parse(asciiAtLimit + "x").error?.issues[0]?.message).toBe(
+            VALIDATION_MESSAGES.PASSWORD_TOO_LONG,
+        );
+        expect(parse(vietnameseOverLimit).error?.issues[0]?.message).toBe(
+            VALIDATION_MESSAGES.PASSWORD_TOO_LONG,
+        );
+    });
+
     it("rejects mismatched confirmation", () => {
         const result = resetPasswordSchema.safeParse({
             newPassword: STRONG_PASSWORD,
