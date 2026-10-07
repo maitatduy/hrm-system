@@ -51,9 +51,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            // Lỗi ở cấp class (ví dụ ràng buộc so sánh hai trường) là ObjectError, không có tên trường
+            String key = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
+            errors.putIfAbsent(key, error.getDefaultMessage());
         });
 
         ApiResponse<Void> response = ApiResponse.error(

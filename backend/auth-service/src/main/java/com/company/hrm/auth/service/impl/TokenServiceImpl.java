@@ -231,17 +231,13 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public String validateResetToken(String resetToken) {
-        String email = redisTemplate.opsForValue().get(REDIS_RESET_PREFIX + resetToken);
+    public String consumeResetToken(String resetToken) {
+        // GETDEL atomic: hai request đồng thời cùng token thì chỉ một request nhận được email, token dùng đúng một lần
+        String email = redisTemplate.opsForValue().getAndDelete(REDIS_RESET_PREFIX + resetToken);
         if (email == null) {
             throw new BadRequestException("Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn");
         }
         return email;
-    }
-
-    @Override
-    public void revokeResetToken(String resetToken) {
-        redisTemplate.delete(REDIS_RESET_PREFIX + resetToken);
     }
 
     /**

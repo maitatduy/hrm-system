@@ -92,6 +92,12 @@ Mỗi service sở hữu database riêng, không service nào được đọc tr
 - Gateway chỉ giữ `JWT_SECRET`, không bao giờ giữ `JWT_REFRESH_SECRET`. Vì HS256 là khóa đối xứng, gateway về lý thuyết vẫn ký được access token; hướng lâu dài là chuyển access token sang RS256 hoặc ES256 để gateway chỉ giữ public key.
 - Cổng riêng của từng service vẫn gọi thẳng được nếu mở ra ngoài. Khi deploy, chỉ public cổng của api-gateway, các service khác chỉ nằm trong mạng nội bộ.
 
+### 4.6. Yêu cầu hạ tầng và kiểm thử của module Auth
+
+- Redis từ 6.2 trở lên: reset token được lấy và xóa bằng lệnh `GETDEL` (có từ 6.2), rate limit dùng Lua script. Redis cũ hơn sẽ báo lệnh không tồn tại khi đặt lại mật khẩu.
+- MySQL nên chạy với múi giờ UTC (`default-time-zone = '+00:00'`). Ứng dụng luôn tự gán thời gian theo UTC, nhưng giá trị do database tự sinh (`DEFAULT CURRENT_TIMESTAMP`, `ON UPDATE CURRENT_TIMESTAMP`) lấy theo múi giờ của server và sẽ lệch quy tắc UTC.
+- Các test cần Redis thật (`RateLimitServiceImplRedisTest`, `TokenServiceImplRedisTest`) kiểm tra những thứ mock không bắt được: request song song không vượt ngưỡng, bộ đếm không mất TTL, reset token chỉ dùng được một lần. Các test này tự bỏ qua khi không có biến môi trường `TEST_REDIS_HOST`, nên CI phải dựng một Redis (service container) và đặt `TEST_REDIS_HOST`, nếu không chúng sẽ không bao giờ được chạy tự động. Test dùng database số 15 và key ngẫu nhiên, chỉ xóa đúng key của mình.
+
 ## 5. Ghi chú
 
 Tài liệu này mô tả kiến trúc mức nghiệp vụ để agent tham chiếu khi sinh code, không phải tài liệu đặc tả kỹ thuật đầy đủ. Khi thiết kế thêm module mới hoặc thay đổi luồng nghiệp vụ hiện có, cập nhật file này song song với code để `GEMINI.md` luôn đọc được thông tin mới nhất ở đầu mỗi phiên.

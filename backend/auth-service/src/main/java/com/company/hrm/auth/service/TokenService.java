@@ -26,9 +26,8 @@ public interface TokenService {
 
     String verifyOtpAndGenerateResetToken(String email, String otp);
 
-    String validateResetToken(String resetToken);
-
-    void revokeResetToken(String resetToken);
+    /** Lấy email gắn với reset token và xóa token trong cùng một lệnh, token chỉ dùng được một lần. */
+    String consumeResetToken(String resetToken);
 
     void revokeAllUserTokens(String userId);
 }
