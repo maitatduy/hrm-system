@@ -21,7 +21,7 @@
 - [x] **Thi công Backend discovery-server**: Khởi tạo discovery-server (Eureka Server cổng 8761), cấu hình toàn bộ 7 service còn lại thành Eureka Client tự động đăng ký vào registry.
 - [x] **Thi công Backend config-server**: Khởi tạo config-server (Spring Cloud Config cổng 8888) dùng profile native, cấu hình kho lưu trữ file cấu hình local cho tất cả microservices.
 - [x] **Gửi OTP qua email (auth-service)**: Gửi mã OTP quên mật khẩu qua SMTP bằng JavaMailSender và template Thymeleaf, thread pool riêng, thử lại 3 lần, không ghi OTP ra log, lưu OTP dạng HMAC trong Redis, test bằng GreenMail.
-- [x] **Ghi nhớ đăng nhập**: Backend nhận rememberMe khi đăng nhập, ghi nhớ thì cookie refresh token lưu bền 7 ngày, không ghi nhớ thì cookie phiên và refresh token sống 1 ngày, lựa chọn giữ nguyên qua refresh nhờ claim trong token. Frontend gửi rememberMe và lưu access token vào localStorage hoặc sessionStorage tương ứng.
+- [x] **Ghi nhớ đăng nhập**: Backend nhận rememberMe khi đăng nhập, ghi nhớ thì cookie refresh token lưu bền 7 ngày, không ghi nhớ thì cookie phiên và refresh token sống 1 ngày, lựa chọn giữ nguyên qua refresh nhờ claim trong token. Frontend gửi rememberMe, access token chỉ giữ trong bộ nhớ và khôi phục phiên bằng cookie refresh token khi tải lại trang.
 
 ---
 
@@ -42,3 +42,4 @@
 - **[2026-10-06 21:04]**: Hoàn thành frontend plan và design brief cho màn hình Tổng quan (Dashboard), brief dùng token màu trong `frontend/src/index.css` để đồng bộ với các màn đã code.
 - **[2026-10-06 22:34]**: Hoàn thành code màn hình Tổng quan (Dashboard) với thẻ thống kê, biểu đồ chuyên cần và phòng ban, hoạt động gần đây, sự kiện sắp tới, chạy bằng dữ liệu mẫu; thêm icon cho sidebar.
 - **[2026-10-06 23:09]**: Sửa auth-service trả đúng 404 cho đường dẫn không tồn tại và 405 (kèm header Allow) cho method không hỗ trợ, thay vì 500.
+- **[2026-10-08 04:15]**: Gia cố bảo mật auth-service (bootstrap admin, thu hồi phiên, rate limit đăng nhập), api-gateway xác thực JWT; frontend chỉ giữ access token trong bộ nhớ, khôi phục phiên bằng cookie refresh, sửa banner đăng xuất.
