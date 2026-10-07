@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "../store";
@@ -29,7 +29,15 @@ const renderAt = (path: string) =>
             <MemoryRouter initialEntries={[path]}>
                 <Routes>
                     <Route element={<GuestRoute />}>
-                        <Route path="/login" element={<p>login page</p>} />
+                        <Route
+                            path="/login"
+                            element={
+                                <>
+                                    <p>login page</p>
+                                    <LocationProbe />
+                                </>
+                            }
+                        />
                     </Route>
                     <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
                         <Route path="/dashboard" element={<p>admin dashboard</p>} />
@@ -104,5 +112,35 @@ describe("auth store", () => {
         expect(localStorage.length).toBe(0);
         expect(sessionStorage.length).toBe(0);
         setItem.mockRestore();
+    });
+});
+
+describe("after the session ends", () => {
+    beforeEach(() => {
+        useAuthStore.getState().setAuth({ accessToken: "token", user: userWithRole("HR") });
+    });
+
+    it("shows the logout notice instead of a redirect back when the user signs out", () => {
+        renderAt("/dashboard");
+        expect(screen.getByText("admin dashboard")).toBeInTheDocument();
+
+        act(() => useAuthStore.getState().clearAuth("logged_out"));
+
+        expect(screen.getByTestId("location")).toHaveTextContent("/login?reason=logged_out");
+    });
+
+    it("keeps the page to return to when the session simply expires", () => {
+        renderAt("/dashboard");
+
+        act(() => useAuthStore.getState().clearAuth());
+
+        expect(screen.getByTestId("location")).toHaveTextContent("/login?redirect=%2Fdashboard");
+    });
+
+    it("forgets the sign-out reason after the next login", () => {
+        useAuthStore.getState().clearAuth("password_changed");
+        useAuthStore.getState().setAuth({ accessToken: "token", user: userWithRole("HR") });
+
+        expect(useAuthStore.getState().signOutReason).toBeNull();
     });
 });

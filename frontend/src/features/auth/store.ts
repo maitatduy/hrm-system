@@ -25,12 +25,25 @@ export const useAuthStore = create<AuthState>((set) => ({
     accessToken: null,
     status: "restoring",
     isAuthenticated: false,
+    signOutReason: null,
     sessionUser: null,
     setAuth: ({ accessToken, user }) =>
-        set({ accessToken, status: "authenticated", isAuthenticated: true, sessionUser: user }),
+        set({
+            accessToken,
+            status: "authenticated",
+            isAuthenticated: true,
+            signOutReason: null,
+            sessionUser: user,
+        }),
     setAccessToken: (accessToken) =>
-        set({ accessToken, status: "authenticated", isAuthenticated: true }),
+        set({ accessToken, status: "authenticated", isAuthenticated: true, signOutReason: null }),
     setSessionUser: (user) => set({ sessionUser: user }),
-    clearAuth: () =>
-        set({ accessToken: null, status: "anonymous", isAuthenticated: false, sessionUser: null }),
+    clearAuth: (reason) =>
+        set({
+            accessToken: null,
+            status: "anonymous",
+            isAuthenticated: false,
+            signOutReason: reason ?? null,
+            sessionUser: null,
+        }),
 }));

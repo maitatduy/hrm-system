@@ -16,6 +16,7 @@ export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     const location = useLocation();
     const status = useAuthStore((state) => state.status);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const signOutReason = useAuthStore((state) => state.signOutReason);
     const sessionUser = useAuthStore((state) => state.sessionUser);
     const currentUserQuery = useCurrentUserQuery();
 
@@ -25,6 +26,10 @@ export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     }
 
     if (!isAuthenticated) {
+        // Người dùng chủ động kết thúc phiên: về trang đăng nhập kèm lý do để hiện thông báo, không giữ ?redirect
+        if (signOutReason) {
+            return <Navigate to={`/login?reason=${signOutReason}`} replace />;
+        }
         const target = `${location.pathname}${location.search}`;
         const query = target === "/" ? "" : `?redirect=${encodeURIComponent(target)}`;
         return <Navigate to={`/login${query}`} replace />;

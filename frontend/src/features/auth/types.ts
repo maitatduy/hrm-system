@@ -72,9 +72,14 @@ export interface AuthState {
     readonly accessToken: string | null;
     readonly status: SessionStatus;
     readonly isAuthenticated: boolean;
+    /**
+     * Lý do phiên vừa kết thúc do người dùng chủ động (đăng xuất, đổi mật khẩu), để ProtectedRoute đưa về trang đăng
+     * nhập kèm thông báo. null khi phiên hết hạn hoặc bị thu hồi, lúc đó giữ ?redirect để quay lại đúng trang.
+     */
+    readonly signOutReason: LoginRedirectReason | null;
     readonly sessionUser: AuthUserSession | null;
     readonly setAuth: (payload: { accessToken: string; user: AuthUserSession }) => void;
     readonly setAccessToken: (accessToken: string) => void;
     readonly setSessionUser: (user: AuthUserSession) => void;
-    readonly clearAuth: () => void;
+    readonly clearAuth: (reason?: LoginRedirectReason) => void;
 }

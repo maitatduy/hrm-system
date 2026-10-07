@@ -16,7 +16,8 @@ export const useLogoutMutation = (reason: LoginRedirectReason = "logged_out") =>
     return useMutation({
         mutationFn: logoutApi,
         onSettled: () => {
-            clearAuth();
+            // Truyền lý do vào store: ProtectedRoute chuyển hướng ngay khi phiên bị xóa, trước cả lệnh navigate dưới đây
+            clearAuth(reason);
             queryClient.clear();
             navigate(`/login?reason=${reason}`, { replace: true });
         },
