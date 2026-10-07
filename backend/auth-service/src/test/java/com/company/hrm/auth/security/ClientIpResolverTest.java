@@ -28,6 +28,21 @@ class ClientIpResolverTest {
     }
 
     @Test
+    void groupsIpv6AddressesByTheirSlash64Prefix() {
+        // Hai địa chỉ trong cùng dải /64 của một client được tính chung một bộ đếm
+        assertThat(ClientIpResolver.rateLimitSubject("2001:db8:abcd:12::1"))
+                .isEqualTo(ClientIpResolver.rateLimitSubject("2001:db8:abcd:12:ffff:ffff:ffff:fffe"))
+                .isEqualTo("2001:0db8:abcd:0012::/64");
+        assertThat(ClientIpResolver.rateLimitSubject("2001:db8:abcd:13::1")).isEqualTo("2001:0db8:abcd:0013::/64");
+    }
+
+    @Test
+    void keepsIpv4AndUnwrapsIpv4MappedAddresses() {
+        assertThat(ClientIpResolver.rateLimitSubject("203.0.113.7")).isEqualTo("203.0.113.7");
+        assertThat(ClientIpResolver.rateLimitSubject("::ffff:203.0.113.7")).isEqualTo("203.0.113.7");
+    }
+
+    @Test
     void ignoresValuesThatAreNotIpAddresses() {
         // Không để giá trị tùy ý thành một phần của key Redis
         assertThat(ClientIpResolver.resolve(requestFromGateway("evil key*"))).isEqualTo("10.0.0.5");
