@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -128,6 +129,21 @@ class AuthServiceImplLoginTest {
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Email hoặc mật khẩu không chính xác");
         verify(rateLimitService).recordLoginFailure(EMAIL);
+    }
+
+    @Test
+    void unknownEmailStillRunsPasswordCheckAgainstDummyHash() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(anyString())).thenReturn("dummy-hash");
+
+        for (int i = 0; i < 2; i++) {
+            assertThatThrownBy(() -> authService.login(new LoginRequest(EMAIL, PASSWORD, false), new MockHttpServletResponse()))
+                    .isInstanceOf(UnauthorizedException.class);
+        }
+
+        // Cùng chi phí BCrypt với email có thật, hash giả chỉ tạo một lần
+        verify(passwordEncoder, times(2)).matches(PASSWORD, "dummy-hash");
+        verify(passwordEncoder, times(1)).encode(anyString());
     }
 
     @Test

@@ -49,6 +49,18 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
+    /** Tạo bằng chính PasswordEncoder đang dùng để có cùng cost với hash thật, tạo lần đầu khi cần. */
+    private volatile String dummyPasswordHash;
+
+    private String dummyPasswordHash() {
+        String hash = dummyPasswordHash;
+        if (hash == null) {
+            hash = passwordEncoder.encode(UUID.randomUUID().toString());
+            dummyPasswordHash = hash;
+        }
+        return hash;
+    }
+
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request, HttpServletResponse response) {
@@ -56,7 +68,10 @@ public class AuthServiceImpl implements AuthService {
         rateLimitService.checkLoginAllowed(email);
 
         User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        // Email không tồn tại vẫn chạy BCrypt với hash giả để thời gian phản hồi không lộ email nào đã đăng ký
+        String hashToCheck = user != null ? user.getPasswordHash() : dummyPasswordHash();
+        boolean passwordMatches = passwordEncoder.matches(request.getPassword(), hashToCheck);
+        if (user == null || !passwordMatches) {
             rateLimitService.recordLoginFailure(email);
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
         }
