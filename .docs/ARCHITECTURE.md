@@ -81,6 +81,17 @@ Mỗi service sở hữu database riêng, không service nào được đọc tr
 - Khi người dùng đăng xuất, refresh token hiện tại bị xóa khỏi Redis ngay lập tức.
 - Access token hiện tại, dù còn hạn, phải được đưa vào danh sách blacklist trên Redis, thời gian tồn tại trong blacklist bằng đúng thời gian còn lại của token đó, tránh làm tràn bộ nhớ Redis theo thời gian.
 
+### 4.5. Xác thực tại api-gateway
+
+- api-gateway xác thực access token cho mọi request đi qua route (`JwtAuthenticationFilter`), trừ các endpoint công khai của auth-service: login, refresh-token, logout, forgot-password, verify-otp, reset-password. Danh sách này phải khớp `permitAll` trong `SecurityConfig` của auth-service, so khớp chính xác từng đường.
+- Kiểm tra gồm chữ ký bằng `JWT_SECRET`, hạn dùng, claim `token_type=access`, và hai key Redis do auth-service ghi: `auth:blacklist:{jti}` (đã đăng xuất) và `auth:token-version:{userId}` (phiên đã bị thu hồi khi khóa tài khoản, đổi role, đổi mật khẩu). Đổi định dạng token hoặc tên key ở auth-service thì phải đổi ở gateway.
+- Không đọc được Redis thì gateway từ chối request với 503 (fail closed), không cho token có thể đã bị thu hồi đi qua.
+- Phân quyền theo đường ngay tại gateway (`RouteAccessPolicy`): `/api/payrolls/**` và `/api/payslips/**` chỉ ADMIN và HR. Service phía sau vẫn tự kiểm tra lại quyền.
+- Request hợp lệ được gắn `X-User-Id`, `X-User-Role`, `X-User-Email` từ token đã xác thực; các header cùng tên do client gửi luôn bị xóa trước nên không giả mạo được. Header `Authorization` vẫn được chuyển tiếp để service tự xác thực lại.
+- Discovery locator của gateway bị tắt cứng trong cấu hình, vì nó tự mở đường `/{service-id}/**` tới mọi service đăng ký Eureka, đi vòng qua route và quy tắc phân quyền.
+- Gateway chỉ giữ `JWT_SECRET`, không bao giờ giữ `JWT_REFRESH_SECRET`. Vì HS256 là khóa đối xứng, gateway về lý thuyết vẫn ký được access token; hướng lâu dài là chuyển access token sang RS256 hoặc ES256 để gateway chỉ giữ public key.
+- Cổng riêng của từng service vẫn gọi thẳng được nếu mở ra ngoài. Khi deploy, chỉ public cổng của api-gateway, các service khác chỉ nằm trong mạng nội bộ.
+
 ## 5. Ghi chú
 
 Tài liệu này mô tả kiến trúc mức nghiệp vụ để agent tham chiếu khi sinh code, không phải tài liệu đặc tả kỹ thuật đầy đủ. Khi thiết kế thêm module mới hoặc thay đổi luồng nghiệp vụ hiện có, cập nhật file này song song với code để `GEMINI.md` luôn đọc được thông tin mới nhất ở đầu mỗi phiên.
