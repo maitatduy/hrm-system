@@ -289,6 +289,27 @@ class TokenServiceImplTest {
     }
 
     @Nested
+    class ResetToken {
+
+        @Test
+        void consumesTheTokenWithASingleGetDel() {
+            when(valueOperations.getAndDelete("auth:reset:token-1")).thenReturn(EMAIL);
+
+            assertThat(tokenService.consumeResetToken("token-1")).isEqualTo(EMAIL);
+            verify(valueOperations).getAndDelete("auth:reset:token-1");
+            verify(valueOperations, never()).get(anyString());
+        }
+
+        @Test
+        void rejectsUnknownOrAlreadyUsedToken() {
+            when(valueOperations.getAndDelete("auth:reset:token-1")).thenReturn(null);
+
+            assertThatThrownBy(() -> tokenService.consumeResetToken("token-1"))
+                    .isInstanceOf(BadRequestException.class);
+        }
+    }
+
+    @Nested
     class VerifyOtp {
 
         /** OTP được lưu dạng HMAC, lấy giá trị đã lưu thật qua storeOtp để dùng làm dữ liệu Redis giả. */

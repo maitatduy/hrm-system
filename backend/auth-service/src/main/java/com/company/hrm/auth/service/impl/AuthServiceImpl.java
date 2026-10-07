@@ -185,14 +185,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        String email = tokenService.validateResetToken(request.getResetToken());
+        // Tiêu thụ token trước: request thứ hai dùng cùng token bị từ chối ngay, kể cả khi gửi đồng thời
+        String email = tokenService.consumeResetToken(request.getResetToken());
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Tài khoản không tồn tại"));
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        tokenService.revokeResetToken(request.getResetToken());
         tokenService.revokeAllUserTokens(user.getId().toString());
     }
 
