@@ -15,7 +15,7 @@ import java.util.TimeZone;
 @EnableDiscoveryClient
 @EnableFeignClients
 @EnableAsync
-@EnableJpaAuditing
+@EnableJpaAuditing(auditorAwareRef = "auditorAware")
 @EnableConfigurationProperties(RateLimitProperties.class)
 public class AuthServiceApplication {
 
