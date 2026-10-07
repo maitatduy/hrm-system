@@ -21,12 +21,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -38,10 +44,11 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Gọi chính {@link AccountServiceImpl#createAccount} qua proxy transaction của Spring, với event publisher và
- * {@code @TransactionalEventListener} thật, để chứng minh email chỉ được gửi sau khi transaction commit.
- * Nếu {@code @Transactional} bị xóa khỏi createAccount, event phát ra ngoài transaction, listener không gửi
- * email và {@link #sendsEmailAfterCommit()} sẽ đỏ.
+ * Gọi chính {@link AccountServiceImpl#createAccount} với TransactionTemplate, event publisher và
+ * {@code @TransactionalEventListener} thật, để chứng minh email chỉ được gửi sau khi transaction commit, và các bước
+ * chậm (gọi employee-service, BCrypt) nằm ngoài transaction. Nếu bước lưu và phát event bị đưa ra khỏi
+ * TransactionTemplate, event phát ra ngoài transaction, listener không gửi email và {@link #sendsEmailAfterCommit()}
+ * sẽ đỏ.
  * <p>
  * Transaction manager tối giản không cần database vì chỉ cần vòng đời commit/rollback. Việc ghi dữ liệu thật
  * vào MySQL trong cùng transaction thuộc phạm vi test tích hợp {@code @SpringBootTest}.
@@ -93,14 +100,51 @@ class AccountCreatedEmailListenerTest {
     }
 
     @Test
-    void sendsNothingWhenTransactionRollsBackAfterEventIsPublished() {
-        // Lỗi xảy ra sau khi event đã phát, transaction rollback nên listener không được gọi
-        when(userMapper.toAccountResponse(any(User.class))).thenThrow(new IllegalStateException("lỗi sau khi lưu"));
+    void sendsNothingWhenTheCommitFailsAfterEventIsPublished() {
+        // Event đã phát trong transaction nhưng commit thất bại (ví dụ database lỗi lúc commit): không gửi email
+        when(userMapper.toAccountResponse(any(User.class))).thenReturn(new AccountResponse());
+        context.getBean(SwitchableTransactionManager.class).failNextCommit();
 
         assertThatThrownBy(() -> accountService.createAccount(randomPasswordRequest()))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(TransactionSystemException.class);
 
         verify(emailService, never()).sendAccountCreatedEmailAsync(anyString(), anyString());
+    }
+
+    @Test
+    void remoteCallsAndPasswordHashingRunOutsideTheTransaction() {
+        // Gọi employee-service hay chạy BCrypt trong transaction là giữ kết nối database suốt thời gian chờ
+        List<String> calledInsideTransaction = new ArrayList<>();
+        EmployeeServiceClient employeeClient = context.getBean(EmployeeServiceClient.class);
+        when(employeeClient.checkEmployeeExists(EMPLOYEE_ID)).thenAnswer(invocation -> {
+            recordIfInsideTransaction(calledInsideTransaction, "checkEmployeeExists");
+            return true;
+        });
+        when(employeeClient.getEmployeeSummary(EMPLOYEE_ID)).thenAnswer(invocation -> {
+            recordIfInsideTransaction(calledInsideTransaction, "getEmployeeSummary");
+            return null;
+        });
+        when(context.getBean(PasswordEncoder.class).encode(anyString())).thenAnswer(invocation -> {
+            recordIfInsideTransaction(calledInsideTransaction, "passwordEncoder.encode");
+            return "hashed";
+        });
+        when(context.getBean(UserRepository.class).saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            // Ngược lại, bước lưu phải nằm trong transaction
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            return invocation.getArgument(0);
+        });
+        when(userMapper.toAccountResponse(any(User.class))).thenReturn(new AccountResponse());
+
+        accountService.createAccount(randomPasswordRequest());
+
+        assertThat(calledInsideTransaction).isEmpty();
+        verify(employeeClient).getEmployeeSummary(EMPLOYEE_ID);
+    }
+
+    private static void recordIfInsideTransaction(List<String> calls, String name) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            calls.add(name);
+        }
     }
 
     @Test
@@ -151,10 +195,11 @@ class AccountCreatedEmailListenerTest {
                 EmployeeServiceClient employeeServiceClient,
                 PasswordEncoder passwordEncoder,
                 TokenService tokenService,
-                ApplicationEventPublisher eventPublisher
+                ApplicationEventPublisher eventPublisher,
+                PlatformTransactionManager transactionManager
         ) {
-            return new AccountServiceImpl(
-                    userRepository, userMapper, employeeServiceClient, passwordEncoder, tokenService, eventPublisher);
+            return new AccountServiceImpl(userRepository, userMapper, employeeServiceClient, passwordEncoder,
+                    tokenService, eventPublisher, new TransactionTemplate(transactionManager));
         }
 
         @Bean
@@ -163,25 +208,39 @@ class AccountCreatedEmailListenerTest {
         }
 
         @Bean
-        PlatformTransactionManager transactionManager() {
-            return new AbstractPlatformTransactionManager() {
-                @Override
-                protected Object doGetTransaction() {
-                    return new Object();
-                }
+        SwitchableTransactionManager transactionManager() {
+            return new SwitchableTransactionManager();
+        }
+    }
 
-                @Override
-                protected void doBegin(Object transaction, TransactionDefinition definition) {
-                }
+    /** Transaction manager tối giản không cần database, có thể cho lần commit kế tiếp thất bại. */
+    static class SwitchableTransactionManager extends AbstractPlatformTransactionManager {
 
-                @Override
-                protected void doCommit(DefaultTransactionStatus status) {
-                }
+        private boolean failNextCommit;
 
-                @Override
-                protected void doRollback(DefaultTransactionStatus status) {
-                }
-            };
+        void failNextCommit() {
+            failNextCommit = true;
+        }
+
+        @Override
+        protected Object doGetTransaction() {
+            return new Object();
+        }
+
+        @Override
+        protected void doBegin(Object transaction, TransactionDefinition definition) {
+        }
+
+        @Override
+        protected void doCommit(DefaultTransactionStatus status) {
+            if (failNextCommit) {
+                failNextCommit = false;
+                throw new TransactionSystemException("commit thất bại");
+            }
+        }
+
+        @Override
+        protected void doRollback(DefaultTransactionStatus status) {
         }
     }
 }

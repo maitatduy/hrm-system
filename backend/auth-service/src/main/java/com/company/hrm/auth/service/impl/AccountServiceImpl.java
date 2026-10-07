@@ -28,8 +28,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -43,31 +47,28 @@ public class AccountServiceImpl implements AccountService {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionTemplate transactionTemplate;
 
     static final String DUPLICATE_EMAIL_MESSAGE = "Email đã được sử dụng bởi một tài khoản khác";
     static final String DUPLICATE_EMPLOYEE_MESSAGE = "Nhân viên này đã được tạo tài khoản trước đó";
     static final String DUPLICATE_ACCOUNT_MESSAGE = "Email hoặc nhân viên này đã có tài khoản";
 
+    /**
+     * Không đặt @Transactional: truy vấn trang tự chạy trong transaction của repository, còn việc lấy tên và phòng ban
+     * từ employee-service nằm ngoài transaction để không giữ kết nối database trong lúc chờ mạng.
+     */
     @Override
-    @Transactional(readOnly = true)
     public PageResponse<AccountResponse> getAccounts(Role role, UserStatus status, String keyword, Pageable pageable) {
         Page<User> userPage = userRepository.searchUsers(role, status, keyword, pageable);
 
-        List<AccountResponse> content = userPage.getContent().stream().map(user -> {
-            AccountResponse response = userMapper.toAccountResponse(user);
-            if (user.getEmployeeId() != null) {
-                try {
-                    EmployeeSummaryDto summary = employeeServiceClient.getEmployeeSummary(user.getEmployeeId());
-                    if (summary != null) {
-                        response.setEmployeeName(summary.getFullName());
-                        response.setDepartmentName(summary.getDepartmentName());
-                    }
-                } catch (Exception e) {
-                    log.warn("Không thể lấy thông tin nhân viên {}: {}", user.getEmployeeId(), e.getMessage());
-                }
-            }
-            return response;
-        }).toList();
+        Map<UUID, EmployeeSummaryDto> employees = fetchEmployeeSummaries(userPage.getContent().stream()
+                .map(User::getEmployeeId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList());
+        List<AccountResponse> content = userPage.getContent().stream()
+                .map(user -> withEmployeeInfo(userMapper.toAccountResponse(user), employees.get(user.getEmployeeId())))
+                .toList();
 
         return PageResponse.<AccountResponse>builder()
                 .content(content)
@@ -79,8 +80,42 @@ public class AccountServiceImpl implements AccountService {
                 .build();
     }
 
+    /**
+     * Gọi employee-service theo lô, mỗi lần tối đa EmployeeServiceClient.MAX_BATCH_SIZE id. Lỗi thì trả kết quả rỗng
+     * để danh sách tài khoản vẫn hiển thị được, chỉ thiếu tên và phòng ban.
+     */
+    private Map<UUID, EmployeeSummaryDto> fetchEmployeeSummaries(List<UUID> employeeIds) {
+        Map<UUID, EmployeeSummaryDto> summaries = new HashMap<>();
+        for (int from = 0; from < employeeIds.size(); from += EmployeeServiceClient.MAX_BATCH_SIZE) {
+            List<UUID> batch = employeeIds.subList(from, Math.min(from + EmployeeServiceClient.MAX_BATCH_SIZE, employeeIds.size()));
+            try {
+                List<EmployeeSummaryDto> result = employeeServiceClient.getEmployeeSummaries(batch);
+                if (result != null) {
+                    result.stream()
+                            .filter(summary -> summary.getId() != null)
+                            .forEach(summary -> summaries.put(summary.getId(), summary));
+                }
+            } catch (Exception e) {
+                log.warn("Không thể lấy thông tin {} nhân viên: {}", batch.size(), e.getMessage());
+            }
+        }
+        return summaries;
+    }
+
+    private static AccountResponse withEmployeeInfo(AccountResponse response, EmployeeSummaryDto summary) {
+        if (summary != null) {
+            response.setEmployeeName(summary.getFullName());
+            response.setDepartmentName(summary.getDepartmentName());
+        }
+        return response;
+    }
+
+    /**
+     * Các bước gọi employee-service và băm mật khẩu (BCrypt) chạy ngoài transaction. Chỉ phần lưu tài khoản và phát
+     * event nằm trong transaction, nên kết nối database không bị giữ trong lúc chờ mạng hay chờ BCrypt. Listener gửi
+     * email vẫn chỉ chạy sau khi transaction đó commit.
+     */
     @Override
-    @Transactional
     public AccountResponse createAccount(CreateAccountRequest request) {
         String email = request.getEmail().toLowerCase();
         if (userRepository.existsByEmail(email)) {
@@ -122,36 +157,34 @@ public class AccountServiceImpl implements AccountService {
                 .status(UserStatus.ACTIVE)
                 .build();
 
-        User savedUser;
-        try {
-            // Flush ngay để lỗi ràng buộc unique xảy ra tại đây chứ không phải lúc commit, khi đã quá muộn để dịch
-            // thành 409. Hai request cùng email hoặc cùng nhân viên chạy đồng thời đều vượt qua kiểm tra ở trên.
-            savedUser = userRepository.saveAndFlush(newUser);
-        } catch (DataIntegrityViolationException e) {
-            // Chỉ trùng khóa unique mới là 409, vi phạm ràng buộc khác là lỗi của code nên để handler chung trả 500
-            if (DataIntegrityErrors.isUniqueViolation(e)) {
-                throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
+        User savedUser = transactionTemplate.execute(status -> {
+            User saved;
+            try {
+                // Flush ngay để lỗi ràng buộc unique xảy ra tại đây chứ không phải lúc commit, khi đã quá muộn để dịch
+                // thành 409. Hai request cùng email hoặc cùng nhân viên chạy đồng thời đều vượt qua kiểm tra ở trên.
+                saved = userRepository.saveAndFlush(newUser);
+            } catch (DataIntegrityViolationException e) {
+                // Chỉ trùng khóa unique mới là 409, vi phạm ràng buộc khác là lỗi của code nên để handler chung trả 500
+                if (DataIntegrityErrors.isUniqueViolation(e)) {
+                    throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
+                }
+                throw e;
             }
-            throw e;
-        }
-        if (!manualPassword) {
-            // Listener chỉ gửi email sau khi transaction commit, mật khẩu không bao giờ nằm trong response
-            eventPublisher.publishEvent(new AccountCreatedEvent(email, rawPassword));
-        }
-        AccountResponse response = userMapper.toAccountResponse(savedUser);
+            if (!manualPassword) {
+                // Listener chỉ gửi email sau khi transaction commit, mật khẩu không bao giờ nằm trong response
+                eventPublisher.publishEvent(new AccountCreatedEvent(email, rawPassword));
+            }
+            return saved;
+        });
 
+        AccountResponse response = userMapper.toAccountResponse(savedUser);
         if (savedUser.getEmployeeId() != null) {
             try {
-                EmployeeSummaryDto summary = employeeServiceClient.getEmployeeSummary(savedUser.getEmployeeId());
-                if (summary != null) {
-                    response.setEmployeeName(summary.getFullName());
-                    response.setDepartmentName(summary.getDepartmentName());
-                }
+                withEmployeeInfo(response, employeeServiceClient.getEmployeeSummary(savedUser.getEmployeeId()));
             } catch (Exception e) {
                 log.warn("Không thể lấy thông tin nhân viên {}: {}", savedUser.getEmployeeId(), e.getMessage());
             }
         }
-
         return response;
     }
 

@@ -24,6 +24,8 @@ import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.UUID;
@@ -54,6 +56,8 @@ class AccountServiceImplCreateTest {
     private TokenService tokenService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private TransactionTemplate transactionTemplate;
 
     @InjectMocks
     private AccountServiceImpl accountService;
@@ -66,6 +70,9 @@ class AccountServiceImplCreateTest {
         when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "hash:" + invocation.getArgument(0));
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userMapper.toAccountResponse(any(User.class))).thenReturn(new AccountResponse());
+        // Chạy callback ngay như một transaction thật; ranh giới transaction được kiểm chứng ở AccountCreatedEmailListenerTest
+        when(transactionTemplate.execute(any())).thenAnswer(invocation ->
+                invocation.<TransactionCallback<?>>getArgument(0).doInTransaction(null));
     }
 
     private CreateAccountRequest request(String passwordMode, String password) {
