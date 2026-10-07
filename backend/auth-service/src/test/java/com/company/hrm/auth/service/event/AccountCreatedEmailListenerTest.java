@@ -64,7 +64,7 @@ class AccountCreatedEmailListenerTest {
         userMapper = context.getBean(UserMapper.class);
 
         UserRepository userRepository = context.getBean(UserRepository.class);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(context.getBean(EmployeeServiceClient.class).checkEmployeeExists(EMPLOYEE_ID)).thenReturn(true);
         when(context.getBean(PasswordEncoder.class).encode(anyString())).thenReturn("hashed");
     }

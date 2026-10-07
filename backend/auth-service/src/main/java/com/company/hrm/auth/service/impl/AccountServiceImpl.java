@@ -21,6 +21,7 @@ import com.company.hrm.auth.validation.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,6 +42,10 @@ public class AccountServiceImpl implements AccountService {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final ApplicationEventPublisher eventPublisher;
+
+    static final String DUPLICATE_EMAIL_MESSAGE = "Email đã được sử dụng bởi một tài khoản khác";
+    static final String DUPLICATE_EMPLOYEE_MESSAGE = "Nhân viên này đã được tạo tài khoản trước đó";
+    static final String DUPLICATE_ACCOUNT_MESSAGE = "Email hoặc nhân viên này đã có tài khoản";
 
     @Override
     @Transactional(readOnly = true)
@@ -78,7 +83,7 @@ public class AccountServiceImpl implements AccountService {
     public AccountResponse createAccount(CreateAccountRequest request) {
         String email = request.getEmail().toLowerCase();
         if (userRepository.existsByEmail(email)) {
-            throw new BadRequestException("Email đã được sử dụng bởi một tài khoản khác");
+            throw new ConflictException(DUPLICATE_EMAIL_MESSAGE);
         }
 
         if (request.getEmployeeId() != null) {
@@ -88,7 +93,7 @@ public class AccountServiceImpl implements AccountService {
             }
 
             if (userRepository.existsByEmployeeId(request.getEmployeeId())) {
-                throw new BadRequestException("Nhân viên này đã được tạo tài khoản trước đó");
+                throw new ConflictException(DUPLICATE_EMPLOYEE_MESSAGE);
             }
         }
 
@@ -116,7 +121,14 @@ public class AccountServiceImpl implements AccountService {
                 .status(UserStatus.ACTIVE)
                 .build();
 
-        User savedUser = userRepository.save(newUser);
+        User savedUser;
+        try {
+            // Flush ngay để lỗi ràng buộc unique xảy ra tại đây chứ không phải lúc commit, khi đã quá muộn để dịch
+            // thành 409. Hai request cùng email hoặc cùng nhân viên chạy đồng thời đều vượt qua kiểm tra ở trên.
+            savedUser = userRepository.saveAndFlush(newUser);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
+        }
         if (!manualPassword) {
             // Listener chỉ gửi email sau khi transaction commit, mật khẩu không bao giờ nằm trong response
             eventPublisher.publishEvent(new AccountCreatedEvent(email, rawPassword));
